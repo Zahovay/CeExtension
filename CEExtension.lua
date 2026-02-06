@@ -11,6 +11,96 @@ local CE_InferRoleFromSelectedClass
 local CE_BuildRequiredById
 local CE_UpdatePresetsConsumables
 local CE_LogRoleInfo
+local CE_InitClassDropdown
+
+local CE_CLASS_DISPLAY = {
+    WARRIOR = "Warrior",
+    MAGE = "Mage",
+    ROGUE = "Rogue",
+    PRIEST = "Priest",
+    PALADIN = "Paladin",
+    DRUID = "Druid",
+    SHAMAN = "Shaman",
+    HUNTER = "Hunter",
+    WARLOCK = "Warlock",
+}
+
+local CE_CLASS_TALENTS = {
+    WARRIOR = { "Arms", "Fury", "Protection" },
+    MAGE = { "Arcane", "Fire", "Frost" },
+    ROGUE = { "Assassination", "Combat", "Subtlety" },
+    PRIEST = { "Discipline", "Holy", "Shadow" },
+    PALADIN = { "Holy", "Protection", "Retribution" },
+    DRUID = { "Balance", "Feral", "Restoration" },
+    SHAMAN = { "Elemental", "Enhancement", "Restoration" },
+    HUNTER = { "Beast", "Marksmanship", "Survival" },
+    WARLOCK = { "Affliction", "Demonology", "Destruction" },
+}
+
+local CE_CLASS_COLORS = {
+    Rogue = "fff569",
+    Mage = "69ccf0",
+    Warrior = "c79c6e",
+    Hunter = "abd473",
+    Druid = "ff7d0a",
+    Priest = "ffffff",
+    Warlock = "9482c9",
+    Shaman = "0070dd",
+    Paladin = "f58cba",
+}
+
+local function CE_GetLastWord(text)
+    if type(GetLastWord) == "function" then
+        return GetLastWord(text)
+    end
+    if type(text) ~= "string" or text == "" then
+        return ""
+    end
+
+    local lastSpace = nil
+    local i = 1
+    while true do
+        local s = string.find(text, " ", i, true)
+        if not s then
+            break
+        end
+        lastSpace = s
+        i = s + 1
+    end
+
+    if lastSpace then
+        return string.sub(text, lastSpace + 1)
+    end
+    return text
+end
+
+local function CE_BuildOriginalClassList()
+    local classes = {}
+    if type(classPresets) == "table" then
+        for className in pairs(classPresets) do
+            table.insert(classes, className)
+        end
+    end
+    if type(SortClassesByLastWord) == "function" then
+        SortClassesByLastWord(classes)
+    end
+    return classes
+end
+
+local function CE_BuildTalentClassList()
+    local classes = {}
+    for classToken, talents in pairs(CE_CLASS_TALENTS) do
+        local className = CE_CLASS_DISPLAY[classToken] or classToken
+        for i = 1, table.getn(talents) do
+            local talentName = talents[i]
+            table.insert(classes, talentName .. " " .. className)
+        end
+    end
+    if type(SortClassesByLastWord) == "function" then
+        SortClassesByLastWord(classes)
+    end
+    return classes
+end
 
 local function CE_UpdatePresetLabels()
     if not ConsumesManager_MainFrame or not ConsumesManager_MainFrame.tabs or not ConsumesManager_MainFrame.tabs[3] then
@@ -98,6 +188,31 @@ CE_LogRoleInfo = function()
     end
 end
 
+CE_InitClassDropdown = function(classDropdown)
+    local useCE = ConsumesManager_Options.showColdEmbrace
+    local entries = useCE and CE_BuildTalentClassList() or CE_BuildOriginalClassList()
+
+    local idx = 1
+    while entries[idx] do
+        local cName = entries[idx]
+        local cIndex = idx
+        local info = {}
+        local lastWord = CE_GetLastWord(cName)
+        local color = (classColors and classColors[lastWord]) or CE_CLASS_COLORS[lastWord] or "ffffff"
+        info.text = "|cff" .. color .. cName .. "|r"
+        info.func = function()
+            UIDropDownMenu_SetSelectedID(classDropdown, cIndex)
+            ConsumesManager_SelectedClass = cName
+            if not useCE and type(ConsumesManager_UpdateRaidsDropdown) == "function" then
+                ConsumesManager_UpdateRaidsDropdown()
+            end
+            ConsumesManager_UpdatePresetsConsumables()
+        end
+        UIDropDownMenu_AddButton(info)
+        idx = idx + 1
+    end
+end
+
 local function CE_ClearPresets(parentFrame)
     if not parentFrame then
         return
@@ -134,7 +249,7 @@ CE_InferRoleFromSelectedClass = function()
 
     local name = string.lower(selected)
 
-    if string.find(name, "tank", 1, true) then
+    if string.find(name, "tank", 1, true) or string.find(name, "protection", 1, true) then
         return "tank"
     end
     if string.find(name, "healer", 1, true) or string.find(name, "holy", 1, true) or string.find(name, "restoration", 1, true) or string.find(name, "discipline", 1, true) then
@@ -143,10 +258,10 @@ CE_InferRoleFromSelectedClass = function()
     if string.find(name, "ranged", 1, true) or string.find(name, "hunter", 1, true) then
         return "ranged"
     end
-    if string.find(name, "mage", 1, true) or string.find(name, "warlock", 1, true) or string.find(name, "shadow priest", 1, true) or string.find(name, "elemental", 1, true) or string.find(name, "moonkin", 1, true) then
+    if string.find(name, "mage", 1, true) or string.find(name, "warlock", 1, true) or string.find(name, "shadow priest", 1, true) or string.find(name, "elemental", 1, true) or string.find(name, "moonkin", 1, true) or string.find(name, "balance", 1, true) then
         return "caster"
     end
-    if string.find(name, "rogue", 1, true) or string.find(name, "warrior", 1, true) or string.find(name, "enhancement", 1, true) or string.find(name, "cat", 1, true) or string.find(name, "melee", 1, true) or string.find(name, "fury", 1, true) or string.find(name, "retribution", 1, true) then
+    if string.find(name, "rogue", 1, true) or string.find(name, "warrior", 1, true) or string.find(name, "enhancement", 1, true) or string.find(name, "cat", 1, true) or string.find(name, "melee", 1, true) or string.find(name, "fury", 1, true) or string.find(name, "retribution", 1, true) or string.find(name, "feral", 1, true) then
         return "melee"
     end
 
@@ -351,6 +466,19 @@ if type(orig_UpdatePresetsConsumables) == "function" then
         end
         if not ConsumesManager_Options.showColdEmbrace then
             CE_UpdatePresetLabels()
+        end
+    end
+end
+
+local orig_CreatePresetsContent = ConsumesManager_CreatePresetsContent
+if type(orig_CreatePresetsContent) == "function" then
+    function ConsumesManager_CreatePresetsContent(parentFrame)
+        orig_CreatePresetsContent(parentFrame)
+        local classDropdown = _G["ConsumesManager_PresetsClassDropdown"]
+        if classDropdown and type(UIDropDownMenu_Initialize) == "function" then
+            UIDropDownMenu_Initialize(classDropdown, function()
+                CE_InitClassDropdown(classDropdown)
+            end)
         end
     end
 end
