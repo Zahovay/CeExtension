@@ -6,6 +6,7 @@ Cold Embrace extension for ConsumesManager on Turtle WoW (Classic 1.12). It adds
 - Auto-selects class/talent when CE extension is enabled.
 - Auto-adjusts potion magic damage type requirements by spec.
 - Shows required counts alongside owned counts.
+- Includes additional consumables not present in the base addon for comprehensive CE readiness.
 - Fully compatible with existing ConsumesManager features.
 - CE presets and role/spec grouping in the Presets tab.
 - CE toggle in the Settings tab.
