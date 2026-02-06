@@ -39,10 +39,9 @@ RC.Data.RoleMandatory = {
         { names = { "Mageblood Potion" }, required = 4 },
         { names = { "Major Mana Potion" }, required = 10 },
         { names = { "Brilliant Wizard Oil" }, required = 4 },
-        { names = { "Elixir of Shadow Power" }, required = 4 },
         { names = { "Greater Arcane Elixir" }, required = 4 },
         { names = { "Flask of Supreme Power" }, required = 4 },
-        { names = { "Lesser Invulnerability Potion" }, required = 4 },
+        { names = { "Limited Invulnerability Potion" }, required = 4 },
     },
     healer = {
         { names = { "Brilliant Mana Oil" }, required = 2 },
@@ -56,12 +55,34 @@ RC.Data.RoleMandatory = {
         { names = { "Elixir of the Mongoose" }, required = 4 },
     },
     tank = {
+        
         { names = { "Greater Stoneshield Potion" }, required = 10 },
         { names = { "Flask of the Titans" }, required = 2 },
     },
     ranged = {
         { names = { "Danonzo's Tel'Abim Surprise" }, required = 20 },
         { names = { "Blessed Sunfruit", "Sour Mountain Berry" }, required = 20 },
+    },
+}
+
+RC.Data.SpecMandatory = {
+    ["Fire Mage"] = {
+        { names = { "Elixir of Greater Firepower" }, required = 4 },
+    },
+    ["Frost Mage"] = {
+        { names = { "Elixir of Frost Power" }, required = 4 },
+    },
+    ["Arcane Mage"] = {
+        { names = { "Greater Arcane Elixir" }, required = 4 },
+    },
+    ["Shadow Priest"] = {
+        { names = { "Elixir of Shadow Power" }, required = 4 },
+    },
+    ["Affliction Warlock"] = {
+        { names = { "Elixir of Shadow Power" }, required = 4 },
+    },
+    ["Fire Warlock"] = {
+        { names = { "Elixir of Greater Firepower" }, required = 4 },
     },
 }
 

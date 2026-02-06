@@ -91,6 +91,203 @@ local function CE_BuildTalentClassList()
     return classes
 end
 
+local function CE_GetFooterTextRegion()
+    if not ConsumesManager_MainFrame or type(ConsumesManager_MainFrame.GetRegions) ~= "function" then
+        return nil
+    end
+
+    local regions = { ConsumesManager_MainFrame:GetRegions() }
+    for i = 1, table.getn(regions) do
+        local region = regions[i]
+        if region and region.GetObjectType and region:GetObjectType() == "FontString" and region.GetText then
+            local text = region:GetText()
+            if type(text) == "string" and string.find(text, "Made by Horyoshi", 1, true) then
+                return region
+            end
+        end
+    end
+
+    return nil
+end
+
+local function CE_UpdateFooterText()
+    local footerText = CE_GetFooterTextRegion()
+    if not footerText then
+        return
+    end
+
+    local baseText = "Made by Horyoshi (v" .. GetAddOnMetadata("ConsumesManager", "Version") .. ")"
+    if ConsumesManager_Options.showColdEmbrace then
+        footerText:SetText(baseText .. " CeExtension by Zahobab (0.1.0)")
+    else
+        footerText:SetText(baseText)
+    end
+end
+
+local CE_InjectedState = {
+    itemsById = {},
+    addedCategories = {}
+}
+
+local CE_AdditionalItems = {
+    {
+        id = 19440,
+        name = "Powerful Anti-Venom",
+        category = "Protection Potions",
+        mats = { "Looted or purchased" },
+        texture = "Interface\\Icons\\INV_Potion_12",
+        description = "Cures poison effects." 
+    },
+    {
+        id = 15723,
+        name = "Tea with Sugar",
+        category = "Protection Potions",
+        mats = { "Looted or purchased" },
+        texture = "Interface\\Icons\\INV_Potion_12",
+        description = "Restores health and mana." 
+    },
+    {
+        id = 22682,
+        name = "Frozen Rune",
+        category = "Protection Potions",
+        mats = { "Looted or purchased" },
+        texture = "Interface\\Icons\\INV_Potion_12",
+        description = "Restores health and mana." 
+    },
+    {
+        id = 13810,
+        name = "Blessed Sunfruit",
+        category = "Food Buffs",
+        mats = { "Looted or purchased" },
+        texture = "Interface\\Icons\\INV_Misc_Food_08",
+        description = "Restores health over time." 
+    },
+    {
+        id = 51711,
+        name = "Sour Mountain Berry",
+        category = "Food Buffs",
+        mats = { "Looted or purchased" },
+        texture = "Interface\\Icons\\INV_Misc_Food_08",
+        description = "Restores health over time." 
+    },
+}
+
+local function CE_AddToConsumablesLookups(item)
+    if not item then
+        return
+    end
+    if type(consumablesList) == "table" then
+        consumablesList[item.id] = item.name
+    end
+    if type(consumablesNameToID) == "table" then
+        consumablesNameToID[item.name] = item.id
+    end
+    if type(consumablesTexture) == "table" then
+        consumablesTexture[item.id] = item.texture
+    end
+    if type(consumablesDescription) == "table" then
+        consumablesDescription[item.id] = item.description
+    end
+    if type(consumablesMats) == "table" then
+        consumablesMats[item.id] = item.mats or {}
+    end
+end
+
+local function CE_RemoveFromConsumablesLookups(item)
+    if not item then
+        return
+    end
+    if type(consumablesList) == "table" then
+        consumablesList[item.id] = nil
+    end
+    if type(consumablesNameToID) == "table" then
+        consumablesNameToID[item.name] = nil
+    end
+    if type(consumablesTexture) == "table" then
+        consumablesTexture[item.id] = nil
+    end
+    if type(consumablesDescription) == "table" then
+        consumablesDescription[item.id] = nil
+    end
+    if type(consumablesMats) == "table" then
+        consumablesMats[item.id] = nil
+    end
+end
+
+local function CE_FindItemIndex(categoryList, itemId)
+    if type(categoryList) ~= "table" then
+        return nil
+    end
+    for i = 1, table.getn(categoryList) do
+        local entry = categoryList[i]
+        if entry and entry.id == itemId then
+            return i
+        end
+    end
+    return nil
+end
+
+local function CE_InjectItemlist()
+    if type(consumablesCategories) ~= "table" then
+        return
+    end
+
+    local i = 1
+    while CE_AdditionalItems[i] do
+        local item = CE_AdditionalItems[i]
+        local categoryName = item.category or "Utility Items"
+        local category = consumablesCategories[categoryName]
+        if not category then
+            category = {}
+            consumablesCategories[categoryName] = category
+            CE_InjectedState.addedCategories[categoryName] = true
+        end
+
+        if not CE_FindItemIndex(category, item.id) then
+            table.insert(category, {
+                id = item.id,
+                name = item.name,
+                mats = item.mats,
+                texture = item.texture,
+                description = item.description
+            })
+            CE_InjectedState.itemsById[item.id] = categoryName
+            CE_AddToConsumablesLookups(item)
+        end
+        i = i + 1
+    end
+end
+
+local function CE_RemoveInjectedItemlist()
+    if type(consumablesCategories) ~= "table" then
+        return
+    end
+
+    local i = 1
+    while CE_AdditionalItems[i] do
+        local item = CE_AdditionalItems[i]
+        local categoryName = CE_InjectedState.itemsById[item.id]
+        local category = categoryName and consumablesCategories[categoryName] or nil
+        if category then
+            local index = CE_FindItemIndex(category, item.id)
+            if index then
+                table.remove(category, index)
+                CE_RemoveFromConsumablesLookups(item)
+            end
+        end
+        CE_InjectedState.itemsById[item.id] = nil
+        i = i + 1
+    end
+
+    for categoryName in pairs(CE_InjectedState.addedCategories) do
+        local category = consumablesCategories[categoryName]
+        if category and table.getn(category) == 0 then
+            consumablesCategories[categoryName] = nil
+        end
+        CE_InjectedState.addedCategories[categoryName] = nil
+    end
+end
+
 local function CE_SetRaidDropdownToDefault()
     local raidDropdown = _G and _G["ConsumesManager_PresetsRaidDropdown"]
     if not raidDropdown then
@@ -423,6 +620,24 @@ CE_UpdatePresetsConsumables = function()
     end
 
     local role = CE_InferRoleFromSelectedClass()
+    local function CE_GetSpecGroups()
+        if not data or not data.SpecMandatory or type(data.SpecMandatory) ~= "table" then
+            return nil
+        end
+        local selected = ConsumesManager_SelectedClass
+        if not selected or selected == "" then
+            return nil
+        end
+        local selectedLower = string.lower(selected)
+        for specLabel, entries in pairs(data.SpecMandatory) do
+            if string.lower(specLabel) == selectedLower then
+                return entries
+            end
+        end
+        return nil
+    end
+
+    local specGroups = CE_GetSpecGroups()
     local groups = {}
     if data.MandatoryGroups and type(data.MandatoryGroups) == "table" and table.getn(data.MandatoryGroups) > 0 then
         table.insert(groups, { label = "Mandatory", entries = data.MandatoryGroups })
@@ -431,7 +646,23 @@ CE_UpdatePresetsConsumables = function()
         table.insert(groups, { label = "Optional", entries = data.OptionalGroups })
     end
     if role and data.RoleMandatory and data.RoleMandatory[role] and type(data.RoleMandatory[role]) == "table" and table.getn(data.RoleMandatory[role]) > 0 then
-        table.insert(groups, { label = "Role: " .. role, entries = data.RoleMandatory[role] })
+        local roleEntries = data.RoleMandatory[role]
+        if role == "caster" and specGroups and type(specGroups) == "table" and table.getn(specGroups) > 0 then
+            roleEntries = {}
+            local i = 1
+            while data.RoleMandatory[role][i] do
+                table.insert(roleEntries, data.RoleMandatory[role][i])
+                i = i + 1
+            end
+            i = 1
+            while specGroups[i] do
+                table.insert(roleEntries, specGroups[i])
+                i = i + 1
+            end
+        end
+        table.insert(groups, { label = "Role: " .. role, entries = roleEntries })
+    elseif specGroups and type(specGroups) == "table" and table.getn(specGroups) > 0 then
+        table.insert(groups, { label = "Spec: " .. ConsumesManager_SelectedClass, entries = specGroups })
     end
 
     local function CE_IsPrepared()
@@ -441,6 +672,9 @@ CE_UpdatePresetsConsumables = function()
         end
         if role and data.RoleMandatory and type(data.RoleMandatory[role]) == "table" then
             table.insert(checkGroups, data.RoleMandatory[role])
+        end
+        if specGroups and type(specGroups) == "table" then
+            table.insert(checkGroups, specGroups)
         end
 
         local i = 1
@@ -712,13 +946,18 @@ local function CE_CreateSettingsCheckbox(parentFrame)
 
         if checked and not wasEnabled then
             ConsumesManager_Options.showColdEmbrace = true
+            CE_InjectItemlist()
             CE_SetClassDropdownToCurrent()
             CE_SetRaidDropdownToNaxxramas()
+            CE_UpdateFooterText()
         elseif not checked and wasEnabled then
             ConsumesManager_Options.showColdEmbrace = false
             CE_ResetDropdownSelections()
+            CE_RemoveInjectedItemlist()
+            CE_UpdateFooterText()
         else
             ConsumesManager_Options.showColdEmbrace = checked and true or false
+            CE_UpdateFooterText()
         end
         if type(ConsumesManager_UpdatePresetsConsumables) == "function" then
             ConsumesManager_UpdatePresetsConsumables()
@@ -790,5 +1029,10 @@ if type(orig_ShowMainWindow) == "function" then
         orig_ShowMainWindow()
         CE_SetClassDropdownToCurrent()
         CE_SetRaidDropdownToNaxxramas()
+        CE_UpdateFooterText()
     end
+end
+
+if ConsumesManager_Options.showColdEmbrace then
+    CE_InjectItemlist()
 end
