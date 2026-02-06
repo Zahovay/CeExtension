@@ -12,6 +12,7 @@ local CE_BuildRequiredById
 local CE_UpdatePresetsConsumables
 local CE_LogRoleInfo
 local CE_InitClassDropdown
+local CE_SetClassDropdownToCurrent
 
 local CE_CLASS_DISPLAY = {
     WARRIOR = "Warrior",
@@ -70,6 +71,17 @@ local function CE_GetLastWord(text)
 
     if lastSpace then
         return string.sub(text, lastSpace + 1)
+    end
+    return text
+end
+
+local function CE_GetFirstWord(text)
+    if type(text) ~= "string" or text == "" then
+        return ""
+    end
+    local spacePos = string.find(text, " ", 1, true)
+    if spacePos then
+        return string.sub(text, 1, spacePos - 1)
     end
     return text
 end
@@ -186,6 +198,43 @@ CE_LogRoleInfo = function()
     if DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage then
         DEFAULT_CHAT_FRAME:AddMessage(string.format("CE: class=%s, primaryTab=%s, role=%s", classTag, tabName, role or "unknown"))
     end
+end
+
+CE_SetClassDropdownToCurrent = function()
+    if not ConsumesManager_Options.showColdEmbrace then
+        return
+    end
+
+    local roleModule = RaidConsumables and RaidConsumables.Role
+    if not roleModule or type(roleModule.Detect) ~= "function" then
+        return
+    end
+
+    local classDropdown = _G["ConsumesManager_PresetsClassDropdown"]
+    if not classDropdown then
+        return
+    end
+
+    local role, info = roleModule.Detect()
+    local classToken = info and info.class or nil
+    local tabIndex = info and info.primaryTab or 0
+    local tabName = (info and info.tabs and info.tabs[tabIndex]) or ""
+
+    local className = CE_CLASS_DISPLAY[classToken or ""] or ""
+    local talentFirst = CE_GetFirstWord(tabName)
+    if className == "" or talentFirst == "" then
+        return
+    end
+
+    local label = talentFirst .. " " .. className
+    ConsumesManager_SelectedClass = label
+
+    local color = CE_CLASS_COLORS[className] or "ffffff"
+    if type(UIDropDownMenu_SetText) == "function" then
+        UIDropDownMenu_SetText("|cff" .. color .. label .. "|r", classDropdown)
+    end
+
+    ConsumesManager_UpdatePresetsConsumables()
 end
 
 CE_InitClassDropdown = function(classDropdown)
@@ -488,5 +537,6 @@ if type(orig_ShowMainWindow) == "function" then
     function ConsumesManager_ShowMainWindow()
         orig_ShowMainWindow()
         CE_LogRoleInfo()
+        CE_SetClassDropdownToCurrent()
     end
 end
