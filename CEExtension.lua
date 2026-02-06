@@ -91,6 +91,34 @@ local function CE_BuildTalentClassList()
     return classes
 end
 
+local function CE_SetRaidDropdownToDefault()
+    local raidDropdown = _G and _G["ConsumesManager_PresetsRaidDropdown"]
+    if not raidDropdown then
+        return
+    end
+    ConsumesManager_SelectedRaid = nil
+    if type(UIDropDownMenu_SetSelectedID) == "function" then
+        UIDropDownMenu_SetSelectedID(raidDropdown, 0)
+    end
+    if type(UIDropDownMenu_SetText) == "function" then
+        UIDropDownMenu_SetText("Select |cffffff00Raid|r", raidDropdown)
+    end
+end
+
+local function CE_ResetDropdownSelections()
+    local classDropdown = _G and _G["ConsumesManager_PresetsClassDropdown"]
+    if classDropdown then
+        ConsumesManager_SelectedClass = nil
+        if type(UIDropDownMenu_SetSelectedID) == "function" then
+            UIDropDownMenu_SetSelectedID(classDropdown, 0)
+        end
+        if type(UIDropDownMenu_SetText) == "function" then
+            UIDropDownMenu_SetText("Select |cffffff00Class|r", classDropdown)
+        end
+    end
+    CE_SetRaidDropdownToDefault()
+end
+
 CE_LogRoleInfo = function()
     if not ConsumesManager_Options.showColdEmbrace then
         return
@@ -680,7 +708,18 @@ local function CE_CreateSettingsCheckbox(parentFrame)
 
     checkbox:SetScript("OnClick", function()
         local checked = checkbox:GetChecked()
-        ConsumesManager_Options.showColdEmbrace = checked and true or false
+        local wasEnabled = ConsumesManager_Options.showColdEmbrace and true or false
+
+        if checked and not wasEnabled then
+            ConsumesManager_Options.showColdEmbrace = true
+            CE_SetClassDropdownToCurrent()
+            CE_SetRaidDropdownToNaxxramas()
+        elseif not checked and wasEnabled then
+            ConsumesManager_Options.showColdEmbrace = false
+            CE_ResetDropdownSelections()
+        else
+            ConsumesManager_Options.showColdEmbrace = checked and true or false
+        end
         if type(ConsumesManager_UpdatePresetsConsumables) == "function" then
             ConsumesManager_UpdatePresetsConsumables()
         end
@@ -749,7 +788,6 @@ local orig_ShowMainWindow = ConsumesManager_ShowMainWindow
 if type(orig_ShowMainWindow) == "function" then
     function ConsumesManager_ShowMainWindow()
         orig_ShowMainWindow()
-        CE_LogRoleInfo()
         CE_SetClassDropdownToCurrent()
         CE_SetRaidDropdownToNaxxramas()
     end
