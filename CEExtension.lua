@@ -8,57 +8,11 @@ ConsumesManager_Options = ConsumesManager_Options or {}
 ConsumesManager_Options.showColdEmbrace = ConsumesManager_Options.showColdEmbrace or false
 
 local CE_InferRoleFromSelectedClass
-local CE_BuildRequiredById
 local CE_UpdatePresetsConsumables
 local CE_LogRoleInfo
 local CE_InitClassDropdown
 local CE_SetClassDropdownToCurrent
 local CE_UpdateRaidsDropdown
-
-local CE_CLASS_DISPLAY = {
-    WARRIOR = "Warrior",
-    MAGE = "Mage",
-    ROGUE = "Rogue",
-    PRIEST = "Priest",
-    PALADIN = "Paladin",
-    DRUID = "Druid",
-    SHAMAN = "Shaman",
-    HUNTER = "Hunter",
-    WARLOCK = "Warlock",
-}
-
-local CE_CLASS_TALENTS = {
-    WARRIOR = { "Arms", "Fury", "Protection" },
-    MAGE = { "Arcane", "Fire", "Frost" },
-    ROGUE = { "Assassination", "Combat", "Subtlety" },
-    PRIEST = { "Discipline", "Holy", "Shadow" },
-    PALADIN = { "Holy", "Protection", "Retribution" },
-    DRUID = { "Balance", "Feral", "Restoration" },
-    SHAMAN = { "Elemental", "Enhancement", "Restoration" },
-    HUNTER = { "Beast", "Marksmanship", "Survival" },
-    WARLOCK = { "Affliction", "Demonology", "Destruction" },
-}
-
-local CE_CLASS_COLORS = {
-    Rogue = "fff569",
-    Mage = "69ccf0",
-    Warrior = "c79c6e",
-    Hunter = "abd473",
-    Druid = "ff7d0a",
-    Priest = "ffffff",
-    Warlock = "9482c9",
-    Shaman = "0070dd",
-    Paladin = "f58cba",
-}
-
-local CE_ORDERED_RAIDS = {
-    "Molten Core",
-    "Blackwing Lair",
-    "Emerald Sanctum",
-    "Temple of Ahn'Qiraj",
-    "Naxxramas",
-    "The Tower of Karazhan",
-}
 
 local function CE_GetLastWord(text)
     if type(GetLastWord) == "function" then
@@ -96,6 +50,14 @@ local function CE_GetFirstWord(text)
     return text
 end
 
+local function CE_GetConfig()
+    local cfg = _G and _G.CE_Config or nil
+    if type(cfg) ~= "table" then
+        return nil
+    end
+    return cfg
+end
+
 local function CE_BuildOriginalClassList()
     local classes = {}
     if type(classPresets) == "table" then
@@ -110,9 +72,14 @@ local function CE_BuildOriginalClassList()
 end
 
 local function CE_BuildTalentClassList()
+    local cfg = CE_GetConfig()
+    if not cfg or not cfg.CLASS_TALENTS then
+        return CE_BuildOriginalClassList()
+    end
+
     local classes = {}
-    for classToken, talents in pairs(CE_CLASS_TALENTS) do
-        local className = CE_CLASS_DISPLAY[classToken] or classToken
+    for classToken, talents in pairs(cfg.CLASS_TALENTS) do
+        local className = (cfg.CLASS_DISPLAY and cfg.CLASS_DISPLAY[classToken]) or classToken
         for i = 1, table.getn(talents) do
             local talentName = talents[i]
             table.insert(classes, talentName .. " " .. className)
@@ -122,72 +89,6 @@ local function CE_BuildTalentClassList()
         SortClassesByLastWord(classes)
     end
     return classes
-end
-
-local function CE_UpdatePresetLabels()
-    if not ConsumesManager_MainFrame or not ConsumesManager_MainFrame.tabs or not ConsumesManager_MainFrame.tabs[3] then
-        return
-    end
-
-    local parentFrame = ConsumesManager_MainFrame.tabs[3]
-    local realmName = GetRealmName and GetRealmName() or nil
-    local playerName = UnitName and UnitName("player") or nil
-
-    if not parentFrame.presetsConsumables or not ConsumesManager_Data or not realmName then
-        return
-    end
-
-    local function GetOwnAmount(itemID)
-        local total = 0
-        if ConsumesManager_Data[realmName] and ConsumesManager_Options.Characters and type(ConsumesManager_Options.Characters) == "table" then
-            for character, isSelected in pairs(ConsumesManager_Options.Characters) do
-                if isSelected and ConsumesManager_Data[realmName][character] and type(ConsumesManager_Data[realmName][character]) == "table" then
-                    local charInventory = ConsumesManager_Data[realmName][character].inventory or {}
-                    local charBank      = ConsumesManager_Data[realmName][character].bank or {}
-                    local charMail      = ConsumesManager_Data[realmName][character].mail or {}
-                    total = total + (charInventory[itemID] or 0) + (charBank[itemID] or 0) + (charMail[itemID] or 0)
-                end
-            end
-        end
-        return total
-    end
-
-    local useCE = ConsumesManager_Options.showColdEmbrace
-    local requiredById = nil
-    if useCE then
-        local role = CE_InferRoleFromSelectedClass()
-        requiredById = CE_BuildRequiredById(role)
-    end
-
-    for _, info in ipairs(parentFrame.presetsConsumables) do
-        if info.label and info.id then
-            local itemID = info.id
-            local text = info.label:GetText() or ""
-            local name = text
-            local nameEnd = string.find(text, " %(")
-            if nameEnd then
-                name = string.sub(text, 1, nameEnd - 1)
-            end
-
-            local ownAmount = GetOwnAmount(itemID)
-            if useCE then
-                local requiredAmount = 0
-                if requiredById and requiredById[itemID] then
-                    requiredAmount = requiredById[itemID]
-                end
-                info.label:SetText(string.format("%s (%d/%d)", name, requiredAmount, ownAmount))
-                if info.label.SetTextColor then
-                    if ownAmount < requiredAmount then
-                        info.label:SetTextColor(1, 0, 0)
-                    else
-                        info.label:SetTextColor(0, 1, 0)
-                    end
-                end
-            else
-                info.label:SetText(string.format("%s (%d)", name, ownAmount))
-            end
-        end
-    end
 end
 
 CE_LogRoleInfo = function()
@@ -215,6 +116,8 @@ CE_SetClassDropdownToCurrent = function()
         return
     end
 
+    local cfg = CE_GetConfig()
+
     local roleModule = RaidConsumables and RaidConsumables.Role
     if not roleModule or type(roleModule.Detect) ~= "function" then
         return
@@ -230,7 +133,7 @@ CE_SetClassDropdownToCurrent = function()
     local tabIndex = info and info.primaryTab or 0
     local tabName = (info and info.tabs and info.tabs[tabIndex]) or ""
 
-    local className = CE_CLASS_DISPLAY[classToken or ""] or ""
+    local className = (cfg.CLASS_DISPLAY and cfg.CLASS_DISPLAY[classToken or ""]) or ""
     local talentFirst = CE_GetFirstWord(tabName)
     if className == "" or talentFirst == "" then
         return
@@ -248,7 +151,7 @@ CE_SetClassDropdownToCurrent = function()
         end
     end
 
-    local color = CE_CLASS_COLORS[className] or "ffffff"
+    local color = (cfg.CLASS_COLORS and cfg.CLASS_COLORS[className]) or "ffffff"
     if type(UIDropDownMenu_SetSelectedID) == "function" and selectedIndex > 0 then
         UIDropDownMenu_SetSelectedID(classDropdown, selectedIndex)
     end
@@ -273,6 +176,11 @@ CE_UpdateRaidsDropdown = function()
         return
     end
 
+    local cfg = CE_GetConfig()
+    if not cfg then
+        return
+    end
+
     local raidDropdown = _G["ConsumesManager_PresetsRaidDropdown"]
     if not raidDropdown then
         return
@@ -282,12 +190,14 @@ CE_UpdateRaidsDropdown = function()
     UIDropDownMenu_Initialize(raidDropdown, function()
         local selectedIndex = 0
         local desired = ConsumesManager_SelectedRaid or "Naxxramas"
-        for i = 1, table.getn(CE_ORDERED_RAIDS) do
-            local raidName = CE_ORDERED_RAIDS[i]
+        local raids = cfg.ORDERED_RAIDS or {}
+        for i = 1, table.getn(raids) do
+            local raidName = raids[i]
+            local raidIndex = i
             local info = {}
             info.text = raidName
             info.func = function()
-                UIDropDownMenu_SetSelectedID(raidDropdown, i)
+                UIDropDownMenu_SetSelectedID(raidDropdown, raidIndex)
                 ConsumesManager_SelectedRaid = raidName
                 ConsumesManager_UpdatePresetsConsumables()
             end
@@ -300,9 +210,9 @@ CE_UpdateRaidsDropdown = function()
         if selectedIndex > 0 then
             UIDropDownMenu_SetSelectedID(raidDropdown, selectedIndex)
             if type(UIDropDownMenu_SetText) == "function" then
-                UIDropDownMenu_SetText(CE_ORDERED_RAIDS[selectedIndex], raidDropdown)
+                UIDropDownMenu_SetText(raids[selectedIndex], raidDropdown)
             end
-            ConsumesManager_SelectedRaid = CE_ORDERED_RAIDS[selectedIndex]
+            ConsumesManager_SelectedRaid = raids[selectedIndex]
         else
             UIDropDownMenu_SetSelectedID(raidDropdown, 0)
             if type(UIDropDownMenu_SetText) == "function" then
@@ -316,6 +226,10 @@ end
 CE_InitClassDropdown = function(classDropdown)
     local useCE = ConsumesManager_Options.showColdEmbrace
     local entries = useCE and CE_BuildTalentClassList() or CE_BuildOriginalClassList()
+    local cfg = CE_GetConfig()
+    if useCE and not cfg then
+        return
+    end
 
     local idx = 1
     while entries[idx] do
@@ -323,7 +237,7 @@ CE_InitClassDropdown = function(classDropdown)
         local cIndex = idx
         local info = {}
         local lastWord = CE_GetLastWord(cName)
-        local color = (classColors and classColors[lastWord]) or CE_CLASS_COLORS[lastWord] or "ffffff"
+        local color = (cfg and cfg.CLASS_COLORS and cfg.CLASS_COLORS[lastWord]) or "ffffff"
         info.text = "|cff" .. color .. cName .. "|r"
         info.func = function()
             UIDropDownMenu_SetSelectedID(classDropdown, cIndex)

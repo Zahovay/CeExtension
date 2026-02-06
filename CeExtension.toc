@@ -5,6 +5,7 @@
 ## Version: 1.0.0
 ## Dependencies: ConsumesManager
 
+CEConfig.lua
 RaidConsumablesRole.lua
 RaidConsumablesData.lua
 CEExtension.lua
