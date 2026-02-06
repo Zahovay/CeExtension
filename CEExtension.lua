@@ -9,7 +9,7 @@ ConsumesManager_Options.showColdEmbrace = ConsumesManager_Options.showColdEmbrac
 
 local CE_InferRoleFromSelectedClass
 local CE_UpdatePresetsConsumables
-local CE_LogRoleInfo
+--local CE_LogRoleInfo
 local CE_InitClassDropdown
 local CE_SetClassDropdownToCurrent
 local CE_UpdateRaidsDropdown
@@ -394,6 +394,7 @@ CE_UpdatePresetsConsumables = function()
         return totalCount
     end
 
+    local role = CE_InferRoleFromSelectedClass()
     local groups = {}
     if data.MandatoryGroups and type(data.MandatoryGroups) == "table" and table.getn(data.MandatoryGroups) > 0 then
         table.insert(groups, { label = "Mandatory", entries = data.MandatoryGroups })
@@ -401,16 +402,76 @@ CE_UpdatePresetsConsumables = function()
     if data.OptionalGroups and type(data.OptionalGroups) == "table" and table.getn(data.OptionalGroups) > 0 then
         table.insert(groups, { label = "Optional", entries = data.OptionalGroups })
     end
-
-    local role = CE_InferRoleFromSelectedClass()
     if role and data.RoleMandatory and data.RoleMandatory[role] and type(data.RoleMandatory[role]) == "table" and table.getn(data.RoleMandatory[role]) > 0 then
         table.insert(groups, { label = "Role: " .. role, entries = data.RoleMandatory[role] })
+    end
+
+    local function CE_IsPrepared()
+        local checkGroups = {}
+        if data.MandatoryGroups and type(data.MandatoryGroups) == "table" then
+            table.insert(checkGroups, data.MandatoryGroups)
+        end
+        if role and data.RoleMandatory and type(data.RoleMandatory[role]) == "table" then
+            table.insert(checkGroups, data.RoleMandatory[role])
+        end
+
+        local i = 1
+        while checkGroups[i] do
+            local entries = checkGroups[i]
+            local j = 1
+            while entries[j] do
+                local names, required = CE_GetGroupEntry(entries[j])
+                local k = 1
+                while names[k] do
+                    local itemId = CE_GetItemIdByName(names[k])
+                    if not itemId then
+                        return false
+                    end
+                    if CE_GetTotalCount(itemId) < required then
+                        return false
+                    end
+                    k = k + 1
+                end
+                j = j + 1
+            end
+            i = i + 1
+        end
+
+        return true
     end
 
     local lineHeight = 18
     local index = 0
     local hasAnyVisibleItems = false
     local showUseButton = ConsumesManager_Options.showUseButton or false
+
+    if table.getn(groups) > 0 then
+        local prepared = CE_IsPrepared()
+        index = index + 1
+        local statusFrame = CreateFrame("Frame", "ConsumesManager_CEStatusFrame" .. index, scrollChild)
+        statusFrame:SetWidth(scrollChild:GetWidth() - 10)
+        statusFrame:SetHeight(lineHeight)
+        statusFrame:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -((index - 1) * lineHeight))
+        statusFrame:Show()
+
+        local statusLabel = statusFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+        statusLabel:SetPoint("LEFT", statusFrame, "LEFT", 0, 0)
+        statusLabel:SetText(prepared and "Fully prepared for Naxx" or "Not prepared for Naxx")
+        statusLabel:SetJustifyH("LEFT")
+        if prepared then
+            statusLabel:SetTextColor(0, 1, 0)
+        else
+            statusLabel:SetTextColor(1, 0, 0)
+        end
+
+        table.insert(parentFrame.presetsConsumables, {
+            frame = statusFrame,
+            label = statusLabel,
+            isCategory = true
+        })
+
+        index = index + 1
+    end
 
     for i = 1, table.getn(groups) do
         local group = groups[i]
