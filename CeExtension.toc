@@ -1,0 +1,10 @@
+## Interface: 11200
+## Title: CeExtension (ConsumesManager CE)
+## Notes: Cold Embrace extension for ConsumesManager.
+## Author: Horyoshi
+## Version: 1.0.0
+## Dependencies: ConsumesManager
+
+RaidConsumablesRole.lua
+RaidConsumablesData.lua
+CEExtension.lua
