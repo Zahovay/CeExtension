@@ -13,6 +13,7 @@ local CE_UpdatePresetsConsumables
 local CE_LogRoleInfo
 local CE_InitClassDropdown
 local CE_SetClassDropdownToCurrent
+local CE_UpdateRaidsDropdown
 
 local CE_CLASS_DISPLAY = {
     WARRIOR = "Warrior",
@@ -48,6 +49,15 @@ local CE_CLASS_COLORS = {
     Warlock = "9482c9",
     Shaman = "0070dd",
     Paladin = "f58cba",
+}
+
+local CE_ORDERED_RAIDS = {
+    "Molten Core",
+    "Blackwing Lair",
+    "Emerald Sanctum",
+    "Temple of Ahn'Qiraj",
+    "Naxxramas",
+    "The Tower of Karazhan",
 }
 
 local function CE_GetLastWord(text)
@@ -229,12 +239,78 @@ CE_SetClassDropdownToCurrent = function()
     local label = talentFirst .. " " .. className
     ConsumesManager_SelectedClass = label
 
+    local entries = CE_BuildTalentClassList()
+    local selectedIndex = 0
+    for i = 1, table.getn(entries) do
+        if entries[i] == label then
+            selectedIndex = i
+            break
+        end
+    end
+
     local color = CE_CLASS_COLORS[className] or "ffffff"
+    if type(UIDropDownMenu_SetSelectedID) == "function" and selectedIndex > 0 then
+        UIDropDownMenu_SetSelectedID(classDropdown, selectedIndex)
+    end
     if type(UIDropDownMenu_SetText) == "function" then
         UIDropDownMenu_SetText("|cff" .. color .. label .. "|r", classDropdown)
     end
 
     ConsumesManager_UpdatePresetsConsumables()
+end
+
+local function CE_SetRaidDropdownToNaxxramas()
+    if not ConsumesManager_Options.showColdEmbrace then
+        return
+    end
+
+    ConsumesManager_SelectedRaid = "Naxxramas"
+    CE_UpdateRaidsDropdown()
+end
+
+CE_UpdateRaidsDropdown = function()
+    if not ConsumesManager_Options.showColdEmbrace then
+        return
+    end
+
+    local raidDropdown = _G["ConsumesManager_PresetsRaidDropdown"]
+    if not raidDropdown then
+        return
+    end
+
+    UIDropDownMenu_ClearAll(raidDropdown)
+    UIDropDownMenu_Initialize(raidDropdown, function()
+        local selectedIndex = 0
+        local desired = ConsumesManager_SelectedRaid or "Naxxramas"
+        for i = 1, table.getn(CE_ORDERED_RAIDS) do
+            local raidName = CE_ORDERED_RAIDS[i]
+            local info = {}
+            info.text = raidName
+            info.func = function()
+                UIDropDownMenu_SetSelectedID(raidDropdown, i)
+                ConsumesManager_SelectedRaid = raidName
+                ConsumesManager_UpdatePresetsConsumables()
+            end
+            UIDropDownMenu_AddButton(info)
+            if raidName == desired then
+                selectedIndex = i
+            end
+        end
+
+        if selectedIndex > 0 then
+            UIDropDownMenu_SetSelectedID(raidDropdown, selectedIndex)
+            if type(UIDropDownMenu_SetText) == "function" then
+                UIDropDownMenu_SetText(CE_ORDERED_RAIDS[selectedIndex], raidDropdown)
+            end
+            ConsumesManager_SelectedRaid = CE_ORDERED_RAIDS[selectedIndex]
+        else
+            UIDropDownMenu_SetSelectedID(raidDropdown, 0)
+            if type(UIDropDownMenu_SetText) == "function" then
+                UIDropDownMenu_SetText("Select |cffffff00Raid|r", raidDropdown)
+            end
+            ConsumesManager_SelectedRaid = nil
+        end
+    end)
 end
 
 CE_InitClassDropdown = function(classDropdown)
@@ -532,11 +608,23 @@ if type(orig_CreatePresetsContent) == "function" then
     end
 end
 
+local orig_UpdateRaidsDropdown = ConsumesManager_UpdateRaidsDropdown
+if type(orig_UpdateRaidsDropdown) == "function" then
+    function ConsumesManager_UpdateRaidsDropdown()
+        if ConsumesManager_Options.showColdEmbrace then
+            CE_UpdateRaidsDropdown()
+        else
+            orig_UpdateRaidsDropdown()
+        end
+    end
+end
+
 local orig_ShowMainWindow = ConsumesManager_ShowMainWindow
 if type(orig_ShowMainWindow) == "function" then
     function ConsumesManager_ShowMainWindow()
         orig_ShowMainWindow()
         CE_LogRoleInfo()
         CE_SetClassDropdownToCurrent()
+        CE_SetRaidDropdownToNaxxramas()
     end
 end
