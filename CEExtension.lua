@@ -347,42 +347,193 @@ CE_UpdatePresetsConsumables = function()
 
     parentFrame.messageLabel:Hide()
 
-    local labels = {}
+    local nameToId = consumablesNameToID or {}
+    local lowerNameToId = {}
+    for itemName, itemId in pairs(nameToId) do
+        lowerNameToId[string.lower(itemName)] = itemId
+    end
+
+    local function CE_GetItemIdByName(itemName)
+        if not itemName then
+            return nil
+        end
+        local id = nameToId[itemName]
+        if id then
+            return id
+        end
+        return lowerNameToId[string.lower(itemName)]
+    end
+
+    local function CE_GetGroupEntry(entry)
+        if type(entry) ~= "table" then
+            return { entry }, 1
+        end
+        local names = entry.names or entry
+        local required = entry.required or 1
+        if type(names) ~= "table" then
+            names = { names }
+        end
+        return names, required
+    end
+
+    local realmName = GetRealmName()
+    local playerName = UnitName("player")
+
+    local function CE_GetTotalCount(itemId)
+        local totalCount = 0
+        if ConsumesManager_Data and ConsumesManager_Data[realmName] and ConsumesManager_Options.Characters and type(ConsumesManager_Options.Characters) == "table" then
+            for character, isSelected in pairs(ConsumesManager_Options.Characters) do
+                if isSelected and ConsumesManager_Data[realmName][character] and type(ConsumesManager_Data[realmName][character]) == "table" then
+                    local charInventory = ConsumesManager_Data[realmName][character].inventory or {}
+                    local charBank = ConsumesManager_Data[realmName][character].bank or {}
+                    local charMail = ConsumesManager_Data[realmName][character].mail or {}
+                    totalCount = totalCount + (charInventory[itemId] or 0) + (charBank[itemId] or 0) + (charMail[itemId] or 0)
+                end
+            end
+        end
+        return totalCount
+    end
+
+    local groups = {}
     if data.MandatoryGroups and type(data.MandatoryGroups) == "table" and table.getn(data.MandatoryGroups) > 0 then
-        table.insert(labels, "Mandatory")
+        table.insert(groups, { label = "Mandatory", entries = data.MandatoryGroups })
     end
     if data.OptionalGroups and type(data.OptionalGroups) == "table" and table.getn(data.OptionalGroups) > 0 then
-        table.insert(labels, "Optional")
+        table.insert(groups, { label = "Optional", entries = data.OptionalGroups })
     end
 
     local role = CE_InferRoleFromSelectedClass()
     if role and data.RoleMandatory and data.RoleMandatory[role] and type(data.RoleMandatory[role]) == "table" and table.getn(data.RoleMandatory[role]) > 0 then
-        table.insert(labels, "Role: " .. role)
+        table.insert(groups, { label = "Role: " .. role, entries = data.RoleMandatory[role] })
     end
 
     local lineHeight = 18
     local index = 0
+    local hasAnyVisibleItems = false
+    local showUseButton = ConsumesManager_Options.showUseButton or false
 
-    for i = 1, table.getn(labels) do
-        local labelText = labels[i]
-        if labelText then
+    for i = 1, table.getn(groups) do
+        local group = groups[i]
+        local entries = group and group.entries or nil
+
+        local items = {}
+        if entries and type(entries) == "table" then
+            for j = 1, table.getn(entries) do
+                local entry = entries[j]
+                local names, required = CE_GetGroupEntry(entry)
+                for k = 1, table.getn(names) do
+                    local itemName = names[k]
+                    local itemId = CE_GetItemIdByName(itemName)
+                    local totalCount = itemId and CE_GetTotalCount(itemId) or 0
+                    table.insert(items, {
+                        id = itemId,
+                        name = itemName,
+                        required = required,
+                        totalCount = totalCount
+                    })
+                end
+            end
+        end
+
+        if table.getn(items) > 0 then
             index = index + 1
-            local frame = CreateFrame("Frame", "ConsumesManager_CEGroupFrame" .. index, scrollChild)
-            frame:SetWidth(scrollChild:GetWidth() - 10)
-            frame:SetHeight(lineHeight)
-            frame:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -((index - 1) * lineHeight))
-            frame:Show()
+            local groupFrame = CreateFrame("Frame", "ConsumesManager_CEGroupFrame" .. index, scrollChild)
+            groupFrame:SetWidth(scrollChild:GetWidth() - 10)
+            groupFrame:SetHeight(lineHeight)
+            groupFrame:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -((index - 1) * lineHeight))
+            groupFrame:Show()
 
-            local label = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-            label:SetPoint("LEFT", frame, "LEFT", 0, 0)
-            label:SetText(labelText)
-            label:SetJustifyH("LEFT")
+            local groupLabel = groupFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+            groupLabel:SetPoint("LEFT", groupFrame, "LEFT", 0, 0)
+            groupLabel:SetText(group.label or "")
+            groupLabel:SetJustifyH("LEFT")
 
             table.insert(parentFrame.presetsConsumables, {
-                frame = frame,
-                label = label,
+                frame = groupFrame,
+                label = groupLabel,
                 isCategory = true
             })
+
+            index = index + 1
+
+            for j = 1, table.getn(items) do
+                local item = items[j]
+                if item then
+                    local frame = CreateFrame("Frame", "ConsumesManager_PresetsConsumableFrame" .. index, scrollChild)
+                    frame:SetWidth(scrollChild:GetWidth() - 10)
+                    frame:SetHeight(lineHeight)
+                    frame:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -((index - 1) * lineHeight))
+                    frame:Show()
+                    frame:EnableMouse(true)
+
+                    local useButton = nil
+                    if showUseButton and item.id then
+                        useButton = CreateFrame("Button", "ConsumesManager_PresetsUseButton" .. index, frame, "UIPanelButtonTemplate")
+                        useButton:SetWidth(40)
+                        useButton:SetHeight(16)
+                        useButton:SetPoint("LEFT", frame, "LEFT", 0, 0)
+                        useButton:SetText("Use")
+                        useButton:SetScript("OnClick", function()
+                            local bag, slot = ConsumesManager_FindItemInBags(item.id)
+                            if bag and slot then
+                                UseContainerItem(bag, slot)
+                            else
+                                DEFAULT_CHAT_FRAME:AddMessage("Item not found in bags.")
+                            end
+                        end)
+                    end
+
+                    local label = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+                    if showUseButton and useButton then
+                        label:SetPoint("LEFT", useButton, "RIGHT", 4, 0)
+                    else
+                        label:SetPoint("LEFT", frame, "LEFT", 0, 0)
+                    end
+                    label:SetText(item.name .. " (" .. item.required .. "/" .. item.totalCount .. ")")
+                    label:SetJustifyH("LEFT")
+
+                    if item.required and item.totalCount < item.required then
+                        if item.totalCount == 0 then
+                            label:SetTextColor(1, 0, 0)
+                        else
+                            label:SetTextColor(1, 0.4, 0)
+                        end
+                    else
+                        label:SetTextColor(0, 1, 0)
+                    end
+
+                    if item.id then
+                        frame:SetScript("OnEnter", function()
+                            ConsumesManager_ShowConsumableTooltip(item.id)
+                        end)
+                        frame:SetScript("OnLeave", function()
+                            if ConsumesManager_CustomTooltip and ConsumesManager_CustomTooltip.Hide then
+                                ConsumesManager_CustomTooltip:Hide()
+                            end
+                        end)
+                    end
+
+                    if useButton then
+                        local playerInventory = (ConsumesManager_Data[realmName] and ConsumesManager_Data[realmName][playerName] and ConsumesManager_Data[realmName][playerName].inventory) or {}
+                        local countInInventory = playerInventory[item.id] or 0
+                        if countInInventory > 0 then
+                            useButton:Enable()
+                        else
+                            useButton:Disable()
+                        end
+                    end
+
+                    table.insert(parentFrame.presetsConsumables, {
+                        frame = frame,
+                        label = label,
+                        useButton = useButton,
+                        id = item.id
+                    })
+
+                    index = index + 1
+                    hasAnyVisibleItems = true
+                end
+            end
         end
     end
 
@@ -396,7 +547,7 @@ CE_UpdatePresetsConsumables = function()
     scrollChild:SetHeight(index * lineHeight + 40)
     ConsumesManager_UpdatePresetsScrollBar()
 
-    if index == 0 then
+    if not hasAnyVisibleItems then
         parentFrame.noItemsMessage = parentFrame.messageLabel
         parentFrame.noItemsMessage:SetText("|cffff0000No CE groups available.|r")
         parentFrame.noItemsMessage:Show()
