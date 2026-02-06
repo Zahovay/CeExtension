@@ -46,22 +46,41 @@ RC.Data.RoleMandatory = {
     healer = {
         { names = { "Brilliant Mana Oil" }, required = 2 },
         { names = { "Dreamshard Elixir" }, required = 4 },
+        { names = { "Limited Invulnerability Potion" }, required = 5 },
         { names = { "Mageblood Potion" }, required = 4 },
         { names = { "Major Mana Potion" }, required = 10 },
+        { names = { "Sagefish Delight" }, required = 20 },
     },
     melee = {
+        { names = { "Blessed Sunfruit" }, required = 20 },
         { names = { "Consecrated Sharpening Stone" }, required = 4 },
+        { names = { "Danonzo's Tel'Abim Surprise" }, required = 20 },
+        { names = { "Dense Sharpening Stone", "Elemental Sharpening Stone" }, required = 1 },
+        { names = { "Dreamshard Elixir" }, required = 4 },
         { names = { "Elixir of Giants" }, required = 4 },
         { names = { "Elixir of the Mongoose" }, required = 4 },
+        { names = { "Free Action Potion" }, required = 5 },
+        { names = { "Greater Arcane Elixir" }, required = 4 },
+        { names = { "Limited Invulnerability Potion" }, required = 5 },
     },
     tank = {
-        
         { names = { "Greater Stoneshield Potion" }, required = 10 },
         { names = { "Flask of the Titans" }, required = 2 },
+        { names = { "Blessed Wizard Oil" }, required = 4 },
+        { names = { "Brilliant Wizard Oil" }, required = 1 },
+        { names = { "Consecrated Sharpening Stone" }, required = 4 },
+        { names = { "Dense Sharpening Stone", "Elemental Sharpening Stone" }, required = 1 },
+        { names = { "Dreamshard Elixir" }, required = 4 },
+        { names = { "Elixir of Giants" }, required = 4 },
+        { names = { "Elixir of Superior Defense" }, required = 4 },
+        { names = { "Elixir of the Mongoose" }, required = 4 },
+        { names = { "Free Action Potion" }, required = 5 },
+        { names = { "Greater Arcane Elixir" }, required = 4 },
+        { names = { "Hardened Mushroom", "Dirge's Kickin' Chimaerok Chops" }, required = 20 },
     },
     ranged = {
         { names = { "Danonzo's Tel'Abim Surprise" }, required = 20 },
-        { names = { "Blessed Sunfruit", "Sour Mountain Berry" }, required = 20 },
+        { names = { "Blessed Sunfruit" }, required = 20 },
     },
 }
 
