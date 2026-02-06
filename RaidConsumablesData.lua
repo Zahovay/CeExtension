@@ -105,4 +105,47 @@ RC.Data.SpecMandatory = {
     },
 }
 
+RC.Data.AdditionalItems = {
+    {
+        id = 19440,
+        name = "Powerful Anti-Venom",
+        category = "Protection Potions",
+        mats = { "Looted or purchased" },
+        texture = "Interface\\Icons\\INV_Potion_12",
+        description = "Cures poison effects."
+    },
+    {
+        id = 15723,
+        name = "Tea with Sugar",
+        category = "Protection Potions",
+        mats = { "Looted or purchased" },
+        texture = "Interface\\Icons\\INV_Potion_12",
+        description = "Restores health and mana."
+    },
+    {
+        id = 22682,
+        name = "Frozen Rune",
+        category = "Protection Potions",
+        mats = { "Looted or purchased" },
+        texture = "Interface\\Icons\\INV_Potion_12",
+        description = "Restores health and mana."
+    },
+    {
+        id = 13810,
+        name = "Blessed Sunfruit",
+        category = "Food Buffs",
+        mats = { "Looted or purchased" },
+        texture = "Interface\\Icons\\INV_Misc_Food_08",
+        description = "Restores health over time."
+    },
+    {
+        id = 51711,
+        name = "Sour Mountain Berry",
+        category = "Food Buffs",
+        mats = { "Looted or purchased" },
+        texture = "Interface\\Icons\\INV_Misc_Food_08",
+        description = "Restores health over time."
+    },
+}
+
 RaidConsumables = RC
