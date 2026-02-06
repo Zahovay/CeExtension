@@ -503,7 +503,7 @@ if type(orig_UpdatePresetsConsumables) == "function" then
         else
             orig_UpdatePresetsConsumables()
         end
-        if not ConsumesManager_Options.showColdEmbrace then
+        if not ConsumesManager_Options.showColdEmbrace and type(CE_UpdatePresetLabels) == "function" then
             CE_UpdatePresetLabels()
         end
     end
