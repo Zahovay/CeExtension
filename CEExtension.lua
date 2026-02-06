@@ -74,6 +74,26 @@ if type(orig_ShowMainWindow) == "function" then
     end
 end
 
+local orig_ShowConsumableTooltip = ConsumesManager_ShowConsumableTooltip
+if type(orig_ShowConsumableTooltip) == "function" then
+    function ConsumesManager_ShowConsumableTooltip(itemID)
+        if ConsumesManager_Options.showColdEmbrace and CE_TooltipAllowed and CE_TooltipAllowed[itemID] then
+            ConsumesManager_SelectedItems = ConsumesManager_SelectedItems or {}
+            local restoreSelected = false
+            if not ConsumesManager_SelectedItems[itemID] then
+                restoreSelected = true
+                ConsumesManager_SelectedItems[itemID] = true
+            end
+            orig_ShowConsumableTooltip(itemID)
+            if restoreSelected then
+                ConsumesManager_SelectedItems[itemID] = nil
+            end
+            return
+        end
+        orig_ShowConsumableTooltip(itemID)
+    end
+end
+
 if ConsumesManager_Options.showColdEmbrace then
     if type(CE_InjectItemlist) == "function" then
         CE_InjectItemlist()

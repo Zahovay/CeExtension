@@ -1,5 +1,7 @@
 -- CE presets rendering
 
+CE_TooltipAllowed = CE_TooltipAllowed or {}
+
 local CE_CachedNameToId = nil
 local CE_CachedLowerNameToId = nil
 
@@ -287,6 +289,7 @@ function CE_UpdatePresetsConsumables()
     end
 
     CE_ClearPresets(parentFrame)
+    CE_TooltipAllowed = {}
 
     if not ConsumesManager_SelectedClass or ConsumesManager_SelectedClass == "" then
         parentFrame.messageLabel:SetText("|cffffffffSelect a |rClass|cffffffff to view CE groups.|r")
@@ -452,6 +455,9 @@ function CE_UpdatePresetsConsumables()
             index = CE_AddGroupHeader(scrollChild, index + 1, lineHeight, group.label or "", parentFrame)
             for j = 1, table.getn(items) do
                 local item = items[j]
+                if item and item.id then
+                    CE_TooltipAllowed[item.id] = true
+                end
                 local nextIndex, wasVisible = CE_AddItemRow(scrollChild, index, lineHeight, item, showUseButton, realmName, playerName, parentFrame)
                 index = nextIndex
                 if wasVisible then

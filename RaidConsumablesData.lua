@@ -111,7 +111,7 @@ RC.Data.AdditionalItems = {
         name = "Powerful Anti-Venom",
         category = "Protection Potions",
         mats = { "Looted or purchased" },
-        texture = "Interface\\Icons\\INV_Potion_12",
+        texture = "Interface\\Icons\\INV_DRINK_14",
         description = "Cures poison effects."
     },
     {
@@ -119,7 +119,7 @@ RC.Data.AdditionalItems = {
         name = "Tea with Sugar",
         category = "Protection Potions",
         mats = { "Looted or purchased" },
-        texture = "Interface\\Icons\\INV_Potion_12",
+        texture = "Interface\\Icons\\INV_DRINK_15",
         description = "Restores health and mana."
     },
     {
@@ -127,7 +127,7 @@ RC.Data.AdditionalItems = {
         name = "Frozen Rune",
         category = "Protection Potions",
         mats = { "Looted or purchased" },
-        texture = "Interface\\Icons\\INV_Potion_12",
+        texture = "Interface\\Icons\\INV_MISC_RUNE_09",
         description = "Restores health and mana."
     },
     {
@@ -135,7 +135,7 @@ RC.Data.AdditionalItems = {
         name = "Blessed Sunfruit",
         category = "Food Buffs",
         mats = { "Looted or purchased" },
-        texture = "Interface\\Icons\\INV_Misc_Food_08",
+        texture = "Interface\\Icons\\INV_Misc_Food_41",
         description = "Restores health over time."
     },
     {
@@ -143,7 +143,7 @@ RC.Data.AdditionalItems = {
         name = "Sour Mountain Berry",
         category = "Food Buffs",
         mats = { "Looted or purchased" },
-        texture = "Interface\\Icons\\INV_Misc_Food_08",
+        texture = "Interface\\Icons\\INV_Misc_Food_74",
         description = "Restores health over time."
     },
 }
