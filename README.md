@@ -5,12 +5,12 @@ Cold Embrace extension for [ConsumesManager](https://github.com/Cinecom/Consumes
 ## Features
 - Auto-selects class/talent when CE extension is enabled.
 - Auto-adjusts potion magic damage type requirements by spec.
-- Shows required counts alongside owned counts.
+- Shows required counts alongside owned counts with configurable ordering (Required/Owned or Owned/Required).
 - Includes additional consumables not present in the base addon for comprehensive CE readiness.
 - Fully compatible with existing ConsumesManager features.
 - CE presets and role/spec grouping in the Presets tab.
-- CE toggle in the Settings tab.
-- Non-destructive: base addon remains intact and CE changes are removed when disabled.
+- CE tab with extension settings and configuration.
+- Non-destructive: base addon remains intact and CE changes are removed when disabled (CE tab remains visible).
 
 ## Requirements
 - Turtle WoW
@@ -34,18 +34,27 @@ See [LICENSE](LICENSE).
 
 ## Usage
 1. Open [ConsumesManager](https://github.com/Cinecom/ConsumesManager?tab=readme-ov-file#) in-game.
-2. Go to the Settings tab.
+2. Go to the CE tab.
 3. Check "Enable Cold Embrace extension".
 4. Open the Presets tab and select a class/talent.
 5. CE groups and requirements will appear.
 
-![CE Settings](images/settings.png)
-*Enable the extension in Settings.*
+Optional configuration:
+- In the CE tab, choose Required/Owned or Owned/Required to control the order shown in Presets.
 
-![CE Presets](images/potion_list.png)
-*View CE requirements in the Presets tab.*
+<p>
+   <img src="images/settings.png" alt="CE Settings">
+   <br>
+   <em>Enable the extension in the CE tab.</em>
+</p>
+
+<p>
+   <img src="images/potion_list.png" alt="CE Presets">
+   <br>
+   <em>View CE requirements in the Presets tab.</em>
+</p>
 
 ## How to Switch On/Off
-- On: Settings tab -> check "Enable Cold Embrace extension".
-- Off: Settings tab -> uncheck it. The extension restores the original base addon state.
+- On: CE tab -> check "Enable Cold Embrace extension".
+- Off: CE tab -> uncheck it. The extension restores the original base addon state (CE tab remains available).
 

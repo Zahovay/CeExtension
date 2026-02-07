@@ -497,14 +497,6 @@ local function CE_CreateCETabButton(tabIndex, xOffset, tooltipText)
         normalTexture:SetAllPoints(tab)
     end
 
-    local icon = tab:CreateTexture(nil, "ARTWORK")
-    icon:SetTexture("Interface\\Buttons\\WHITE8x8")
-    icon:SetVertexColor(1, 1, 1, 0)
-    icon:SetWidth(34)
-    icon:SetHeight(34)
-    icon:SetPoint("CENTER", tab, "CENTER", 0, 0)
-    tab.icon = icon
-
     local iconBorder = tab:CreateTexture(nil, "BACKGROUND")
     iconBorder:SetTexture("Interface\\Buttons\\UI-EmptySlot-White")
     iconBorder:SetWidth(54)
@@ -678,7 +670,6 @@ function CE_CreateCETab()
 
     if ConsumesManager_MainFrame.CETabButton and ConsumesManager_MainFrame.CETabContent then
         ConsumesManager_MainFrame.CETabButton:Show()
-        ConsumesManager_MainFrame.CETabContent:Hide()
         ConsumesManager_Tabs[tabIndex] = ConsumesManager_MainFrame.CETabButton
         ConsumesManager_MainFrame.tabs[tabIndex] = ConsumesManager_MainFrame.CETabContent
         CE_UpdateCETabEnabledState()
