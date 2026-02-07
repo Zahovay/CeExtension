@@ -27,7 +27,7 @@ See [LICENSE](LICENSE).
 3. Ensure [ConsumesManager](https://github.com/Cinecom/ConsumesManager?tab=readme-ov-file#) is installed
 4. Start the game. On the character select screen, open AddOns and verify both are enabled.
 
-**Preferred: Git Addon Manager**
+**Preferred: [Git Addon Manager](https://gitlab.com/woblight/GitAddonsManager/-/releases)**
 1. Add this repository to Git Addon Manager.
 2. Install/update CeExtension through the manager.
 3. Ensure [ConsumesManager](https://github.com/Cinecom/ConsumesManager?tab=readme-ov-file#) is installed and enabled.
