@@ -386,7 +386,7 @@ local function CE_CreateCETabCheckbox(parentFrame)
         parentFrame.CEConfigSubtitle = subtitleLabel
     end
     subtitleLabel:ClearAllPoints()
-    subtitleLabel:SetPoint("TOPLEFT", configLabel, "BOTTOMLEFT", 0, -4)
+    subtitleLabel:SetPoint("TOPLEFT", configLabel, "BOTTOMLEFT", 0, -10)
     subtitleLabel:SetText("Required positioning")
     subtitleLabel:SetJustifyH("LEFT")
 
@@ -572,7 +572,7 @@ local function CE_CreateCETabContent(tabIndex)
 
     local subtitle = content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     subtitle:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -6)
-    subtitle:SetText("CE tab content goes here.")
+    subtitle:SetText("Cold Embrace extension for Consumes Manager")
     content.CESubtitle = subtitle
 
     CE_CreateCETabCheckbox(content)
@@ -657,6 +657,12 @@ CE_UpdateCETabEnabledState = function()
                 content.CERadioTwo:Disable()
                 content.CERadioTwo:SetAlpha(0.6)
             end
+        end
+        if content.CERadioOneHit and content.CERadioOneHit.EnableMouse then
+            content.CERadioOneHit:EnableMouse(enabled)
+        end
+        if content.CERadioTwoHit and content.CERadioTwoHit.EnableMouse then
+            content.CERadioTwoHit:EnableMouse(enabled)
         end
     end
 end
