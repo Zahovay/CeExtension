@@ -66,15 +66,16 @@ local function CE_BuildGroups(data, role, specGroups, selectedClass)
     if data.MandatoryGroups and type(data.MandatoryGroups) == "table" and table.getn(data.MandatoryGroups) > 0 then
         table.insert(groups, { label = "Mandatory", entries = data.MandatoryGroups })
     end
-    if data.OptionalGroups and type(data.OptionalGroups) == "table" and table.getn(data.OptionalGroups) > 0 then
-        table.insert(groups, { label = "Optional", entries = data.OptionalGroups })
-    end
 
     local roleEntries = CE_GetRoleEntries(data, role, specGroups)
     if roleEntries then
         table.insert(groups, { label = "Role: " .. role, entries = roleEntries })
     elseif type(specGroups) == "table" and table.getn(specGroups) > 0 and selectedClass and selectedClass ~= "" then
         table.insert(groups, { label = "Spec: " .. selectedClass, entries = specGroups })
+    end
+
+    if data.OptionalGroups and type(data.OptionalGroups) == "table" and table.getn(data.OptionalGroups) > 0 then
+        table.insert(groups, { label = "Optional", entries = data.OptionalGroups })
     end
 
     return groups
