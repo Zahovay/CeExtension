@@ -301,10 +301,14 @@ function CE_CreateSettingsCheckbox(parentFrame)
     end
 end
 
+local CE_UpdateCETabEnabledState
+
 local function CE_CreateCETabCheckbox(parentFrame)
     if not parentFrame then
         return
     end
+
+    ConsumesManager_Options.ceConfigMode = ConsumesManager_Options.ceConfigMode or "requiredmode"
 
     local existingFrame = parentFrame.CECheckboxFrame
     local existingCheckbox = parentFrame.CECheckbox
@@ -356,6 +360,7 @@ local function CE_CreateCETabCheckbox(parentFrame)
         if type(ConsumesManager_UpdatePresetsConsumables) == "function" then
             ConsumesManager_UpdatePresetsConsumables()
         end
+        CE_UpdateCETabEnabledState()
     end)
 
     checkboxFrame:SetScript("OnMouseDown", function()
@@ -364,6 +369,117 @@ local function CE_CreateCETabCheckbox(parentFrame)
 
     parentFrame.CECheckboxFrame = checkboxFrame
     parentFrame.CECheckbox = checkbox
+
+    local configLabel = parentFrame.CEConfigLabel
+    if not configLabel then
+        configLabel = parentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+        parentFrame.CEConfigLabel = configLabel
+    end
+    configLabel:ClearAllPoints()
+    configLabel:SetPoint("TOPLEFT", checkboxFrame, "BOTTOMLEFT", 0, -12)
+    configLabel:SetText("Configuration")
+    configLabel:SetJustifyH("LEFT")
+
+    local subtitleLabel = parentFrame.CEConfigSubtitle
+    if not subtitleLabel then
+        subtitleLabel = parentFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        parentFrame.CEConfigSubtitle = subtitleLabel
+    end
+    subtitleLabel:ClearAllPoints()
+    subtitleLabel:SetPoint("TOPLEFT", configLabel, "BOTTOMLEFT", 0, -4)
+    subtitleLabel:SetText("Required positioning")
+    subtitleLabel:SetJustifyH("LEFT")
+
+    local function SetRadioSelection(mode)
+        ConsumesManager_Options.ceConfigMode = mode
+        if parentFrame.CERadioOne then
+            parentFrame.CERadioOne:SetChecked(mode == "requiredmode")
+        end
+        if parentFrame.CERadioTwo then
+            parentFrame.CERadioTwo:SetChecked(mode == "ownedmode")
+        end
+        if type(ConsumesManager_UpdatePresetsConsumables) == "function" then
+            ConsumesManager_UpdatePresetsConsumables()
+        end
+    end
+
+    local radioOne = parentFrame.CERadioOne
+    if not radioOne then
+        radioOne = CreateFrame("CheckButton", nil, parentFrame, "UIRadioButtonTemplate")
+        parentFrame.CERadioOne = radioOne
+    end
+    radioOne:ClearAllPoints()
+    radioOne:SetPoint("TOPLEFT", subtitleLabel, "BOTTOMLEFT", -2, -6)
+    radioOne:SetWidth(16)
+    radioOne:SetHeight(16)
+    radioOne:SetScript("OnClick", function()
+        SetRadioSelection("requiredmode")
+    end)
+
+    local radioOneLabel = parentFrame.CERadioOneLabel
+    if not radioOneLabel then
+        radioOneLabel = parentFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        parentFrame.CERadioOneLabel = radioOneLabel
+    end
+    radioOneLabel:ClearAllPoints()
+    radioOneLabel:SetPoint("LEFT", radioOne, "RIGHT", 6, 0)
+    radioOneLabel:SetText("(Required/Owned)")
+    radioOneLabel:SetJustifyH("LEFT")
+
+    local radioOneHit = parentFrame.CERadioOneHit
+    if not radioOneHit then
+        radioOneHit = CreateFrame("Button", nil, parentFrame)
+        parentFrame.CERadioOneHit = radioOneHit
+    end
+    radioOneHit:ClearAllPoints()
+    radioOneHit:SetPoint("TOPLEFT", radioOneLabel, "TOPLEFT", 0, 0)
+    radioOneHit:SetPoint("BOTTOMRIGHT", radioOneLabel, "BOTTOMRIGHT", 0, 0)
+    radioOneHit:EnableMouse(true)
+    radioOneHit:SetScript("OnClick", function()
+        if radioOne.IsEnabled and radioOne:IsEnabled() then
+            radioOne:Click()
+        end
+    end)
+
+    local radioTwo = parentFrame.CERadioTwo
+    if not radioTwo then
+        radioTwo = CreateFrame("CheckButton", nil, parentFrame, "UIRadioButtonTemplate")
+        parentFrame.CERadioTwo = radioTwo
+    end
+    radioTwo:ClearAllPoints()
+    radioTwo:SetPoint("TOPLEFT", radioOne, "BOTTOMLEFT", 0, -6)
+    radioTwo:SetWidth(16)
+    radioTwo:SetHeight(16)
+    radioTwo:SetScript("OnClick", function()
+        SetRadioSelection("ownedmode")
+    end)
+
+    local radioTwoLabel = parentFrame.CERadioTwoLabel
+    if not radioTwoLabel then
+        radioTwoLabel = parentFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        parentFrame.CERadioTwoLabel = radioTwoLabel
+    end
+    radioTwoLabel:ClearAllPoints()
+    radioTwoLabel:SetPoint("LEFT", radioTwo, "RIGHT", 6, 0)
+    radioTwoLabel:SetText("(Owned/Required)")
+    radioTwoLabel:SetJustifyH("LEFT")
+
+    local radioTwoHit = parentFrame.CERadioTwoHit
+    if not radioTwoHit then
+        radioTwoHit = CreateFrame("Button", nil, parentFrame)
+        parentFrame.CERadioTwoHit = radioTwoHit
+    end
+    radioTwoHit:ClearAllPoints()
+    radioTwoHit:SetPoint("TOPLEFT", radioTwoLabel, "TOPLEFT", 0, 0)
+    radioTwoHit:SetPoint("BOTTOMRIGHT", radioTwoLabel, "BOTTOMRIGHT", 0, 0)
+    radioTwoHit:EnableMouse(true)
+    radioTwoHit:SetScript("OnClick", function()
+        if radioTwo.IsEnabled and radioTwo:IsEnabled() then
+            radioTwo:Click()
+        end
+    end)
+
+    SetRadioSelection(ConsumesManager_Options.ceConfigMode)
 end
 
 local function CE_CreateCETabButton(tabIndex, xOffset, tooltipText)
@@ -376,6 +492,10 @@ local function CE_CreateCETabButton(tabIndex, xOffset, tooltipText)
     tab:SetHeight(36)
     tab:SetPoint("TOPLEFT", ConsumesManager_MainFrame, "TOPLEFT", xOffset, -30)
     tab:SetNormalTexture("Interface\\ItemsFrame\\UI-ItemsFrame-InActiveTab")
+    local normalTexture = tab:GetNormalTexture()
+    if normalTexture then
+        normalTexture:SetAllPoints(tab)
+    end
 
     local icon = tab:CreateTexture(nil, "ARTWORK")
     icon:SetTexture("Interface\\Buttons\\WHITE8x8")
@@ -384,6 +504,13 @@ local function CE_CreateCETabButton(tabIndex, xOffset, tooltipText)
     icon:SetHeight(34)
     icon:SetPoint("CENTER", tab, "CENTER", 0, 0)
     tab.icon = icon
+
+    local iconBorder = tab:CreateTexture(nil, "BACKGROUND")
+    iconBorder:SetTexture("Interface\\Buttons\\UI-EmptySlot-White")
+    iconBorder:SetWidth(54)
+    iconBorder:SetHeight(54)
+    iconBorder:SetPoint("CENTER", tab, "CENTER", 0, 0)
+    tab.iconBorder = iconBorder
 
     local iconText = tab:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     iconText:SetPoint("CENTER", tab, "CENTER", 0, 0)
@@ -453,7 +580,7 @@ local function CE_CreateCETabContent(tabIndex)
     return content
 end
 
-local function CE_UpdateCETabEnabledState()
+CE_UpdateCETabEnabledState = function()
     local enabled = ConsumesManager_Options.showColdEmbrace and true or false
     local mainFrame = ConsumesManager_MainFrame
     if not mainFrame then
@@ -483,6 +610,52 @@ local function CE_UpdateCETabEnabledState()
                 content.CESubtitle:SetTextColor(1, 1, 1)
             else
                 content.CESubtitle:SetTextColor(0.6, 0.6, 0.6)
+            end
+        end
+        if content.CEConfigLabel then
+            if enabled then
+                content.CEConfigLabel:SetTextColor(1, 1, 1)
+            else
+                content.CEConfigLabel:SetTextColor(0.6, 0.6, 0.6)
+            end
+        end
+        if content.CEConfigSubtitle then
+            if enabled then
+                content.CEConfigSubtitle:SetTextColor(1, 1, 1)
+            else
+                content.CEConfigSubtitle:SetTextColor(0.6, 0.6, 0.6)
+            end
+        end
+        if content.CERadioOneLabel then
+            if enabled then
+                content.CERadioOneLabel:SetTextColor(1, 1, 1)
+            else
+                content.CERadioOneLabel:SetTextColor(0.6, 0.6, 0.6)
+            end
+        end
+        if content.CERadioTwoLabel then
+            if enabled then
+                content.CERadioTwoLabel:SetTextColor(1, 1, 1)
+            else
+                content.CERadioTwoLabel:SetTextColor(0.6, 0.6, 0.6)
+            end
+        end
+        if content.CERadioOne then
+            if enabled then
+                content.CERadioOne:Enable()
+                content.CERadioOne:SetAlpha(1)
+            else
+                content.CERadioOne:Disable()
+                content.CERadioOne:SetAlpha(0.6)
+            end
+        end
+        if content.CERadioTwo then
+            if enabled then
+                content.CERadioTwo:Enable()
+                content.CERadioTwo:SetAlpha(1)
+            else
+                content.CERadioTwo:Disable()
+                content.CERadioTwo:SetAlpha(0.6)
             end
         end
     end

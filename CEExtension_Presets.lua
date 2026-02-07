@@ -233,7 +233,12 @@ local function CE_AddItemRow(scrollChild, index, lineHeight, item, showUseButton
     else
         label:SetPoint("LEFT", frame, "LEFT", 0, 0)
     end
-    label:SetText(item.name .. " (" .. item.required .. "/" .. item.totalCount .. ")")
+    local mode = ConsumesManager_Options and ConsumesManager_Options.ceConfigMode or "requiredmode"
+    if mode == "ownedmode" then
+        label:SetText(item.name .. " (" .. item.totalCount .. "/" .. item.required .. ")")
+    else
+        label:SetText(item.name .. " (" .. item.required .. "/" .. item.totalCount .. ")")
+    end
     label:SetJustifyH("LEFT")
 
     if item.required and item.totalCount < item.required then
