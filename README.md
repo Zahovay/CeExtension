@@ -28,6 +28,11 @@ See [LICENSE](LICENSE).
    `TurtleWoW/Interface/AddOns/ConsumesManager`
 4. Start the game. On the character select screen, open AddOns and verify both are enabled.
 
+**Preferred: Git Addon Manager**
+1. Add this repository to Git Addon Manager.
+2. Install/update CeExtension through the manager.
+3. Ensure ConsumesManager is installed and enabled.
+
 ## Usage
 1. Open ConsumesManager in-game.
 2. Go to the Settings tab.
