@@ -286,6 +286,7 @@ function CE_CreateSettingsCheckbox(parentFrame)
         if type(ConsumesManager_UpdatePresetsConsumables) == "function" then
             ConsumesManager_UpdatePresetsConsumables()
         end
+        CE_UpdateCETabEnabledState()
     end)
 
     checkboxFrame:SetScript("OnMouseDown", function()
@@ -298,4 +299,258 @@ function CE_CreateSettingsCheckbox(parentFrame)
     if type(ConsumesManager_UpdateSettingsScrollBar) == "function" then
         ConsumesManager_UpdateSettingsScrollBar()
     end
+end
+
+local function CE_CreateCETabCheckbox(parentFrame)
+    if not parentFrame then
+        return
+    end
+
+    local existingFrame = parentFrame.CECheckboxFrame
+    local existingCheckbox = parentFrame.CECheckbox
+
+    local checkboxFrame = existingFrame or CreateFrame("Frame", nil, parentFrame)
+    checkboxFrame:SetParent(parentFrame)
+    checkboxFrame:ClearAllPoints()
+    checkboxFrame:SetWidth(WindowWidth - 60)
+    checkboxFrame:SetHeight(18)
+    checkboxFrame:SetPoint("TOPLEFT", parentFrame, "TOPLEFT", 0, -50)
+    checkboxFrame:EnableMouse(true)
+
+    local checkbox = existingCheckbox or CreateFrame("CheckButton", nil, checkboxFrame)
+    checkbox:SetParent(checkboxFrame)
+    checkbox:ClearAllPoints()
+    checkbox:SetWidth(16)
+    checkbox:SetHeight(16)
+    checkbox:SetPoint("LEFT", checkboxFrame, "LEFT", 0, 0)
+    checkbox:SetNormalTexture("Interface\\Buttons\\UI-CheckBox-Up")
+    checkbox:SetPushedTexture("Interface\\Buttons\\UI-CheckBox-Down")
+    checkbox:SetHighlightTexture("Interface\\Buttons\\UI-CheckBox-Highlight")
+    checkbox:SetCheckedTexture("Interface\\Buttons\\UI-CheckBox-Check")
+    checkbox:SetChecked(ConsumesManager_Options.showColdEmbrace)
+
+    local label = checkboxFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    label:SetPoint("LEFT", checkbox, "RIGHT", 6, 0)
+    label:SetText("Enable Cold Embrace extension")
+    label:SetJustifyH("LEFT")
+
+    checkbox:SetScript("OnClick", function()
+        local checked = checkbox:GetChecked()
+        local wasEnabled = ConsumesManager_Options.showColdEmbrace and true or false
+
+        if checked and not wasEnabled then
+            ConsumesManager_Options.showColdEmbrace = true
+            CE_InjectItemlist()
+            CE_SetClassDropdownToCurrent()
+            CE_SetRaidDropdownToNaxxramas()
+            CE_UpdateFooterText()
+        elseif not checked and wasEnabled then
+            ConsumesManager_Options.showColdEmbrace = false
+            CE_ResetDropdownSelections()
+            CE_RemoveInjectedItemlist()
+            CE_UpdateFooterText()
+        else
+            ConsumesManager_Options.showColdEmbrace = checked and true or false
+            CE_UpdateFooterText()
+        end
+        if type(ConsumesManager_UpdatePresetsConsumables) == "function" then
+            ConsumesManager_UpdatePresetsConsumables()
+        end
+    end)
+
+    checkboxFrame:SetScript("OnMouseDown", function()
+        checkbox:Click()
+    end)
+
+    parentFrame.CECheckboxFrame = checkboxFrame
+    parentFrame.CECheckbox = checkbox
+end
+
+local function CE_CreateCETabButton(tabIndex, xOffset, tooltipText)
+    if not ConsumesManager_MainFrame then
+        return nil
+    end
+
+    local tab = CreateFrame("Button", "ConsumesManager_MainFrameTabCE", ConsumesManager_MainFrame)
+    tab:SetWidth(36)
+    tab:SetHeight(36)
+    tab:SetPoint("TOPLEFT", ConsumesManager_MainFrame, "TOPLEFT", xOffset, -30)
+    tab:SetNormalTexture("Interface\\ItemsFrame\\UI-ItemsFrame-InActiveTab")
+
+    local icon = tab:CreateTexture(nil, "ARTWORK")
+    icon:SetTexture("Interface\\Buttons\\WHITE8x8")
+    icon:SetVertexColor(1, 1, 1, 0)
+    icon:SetWidth(34)
+    icon:SetHeight(34)
+    icon:SetPoint("CENTER", tab, "CENTER", 0, 0)
+    tab.icon = icon
+
+    local iconText = tab:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    iconText:SetPoint("CENTER", tab, "CENTER", 0, 0)
+    iconText:SetText("CE")
+    iconText:SetTextColor(1, 0.85, 0.2)
+    tab.iconText = iconText
+
+    local hoverTexture = tab:CreateTexture(nil, "HIGHLIGHT")
+    hoverTexture:SetTexture("Interface\\Buttons\\CheckButtonHilight")
+    hoverTexture:SetBlendMode("ADD")
+    hoverTexture:SetAllPoints(tab)
+    tab.hoverTexture = hoverTexture
+
+    local activeHighlight = tab:CreateTexture(nil, "OVERLAY")
+    activeHighlight:SetTexture("Interface\\Buttons\\CheckButtonHilight")
+    activeHighlight:SetBlendMode("ADD")
+    activeHighlight:SetAllPoints(tab)
+    activeHighlight:SetWidth(36)
+    activeHighlight:SetHeight(36)
+    activeHighlight:Hide()
+    tab.activeHighlight = activeHighlight
+
+    tab.tooltipText = tooltipText
+    tab:SetScript("OnEnter", function()
+        if type(ShowTooltip) == "function" then
+            ShowTooltip(tab, tab.tooltipText)
+        end
+    end)
+    tab:SetScript("OnLeave", function()
+        if type(HideTooltip) == "function" then
+            HideTooltip()
+        end
+    end)
+
+    tab.isEnabled = true
+    tab.originalOnClick = function()
+        ConsumesManager_ShowTab(tabIndex)
+    end
+    tab:SetScript("OnClick", tab.originalOnClick)
+
+    return tab
+end
+
+local function CE_CreateCETabContent(tabIndex)
+    if not ConsumesManager_MainFrame then
+        return nil
+    end
+
+    local content = CreateFrame("Frame", nil, ConsumesManager_MainFrame)
+    content:SetWidth(WindowWidth - 50)
+    content:SetHeight(380)
+    content:SetPoint("TOPLEFT", ConsumesManager_MainFrame, "TOPLEFT", 30, -80)
+    content:Hide()
+
+    local title = content:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    title:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -5)
+    title:SetText("|cffffff00Cold Embrace|r")
+    content.CETitle = title
+
+    local subtitle = content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    subtitle:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -6)
+    subtitle:SetText("CE tab content goes here.")
+    content.CESubtitle = subtitle
+
+    CE_CreateCETabCheckbox(content)
+
+    return content
+end
+
+local function CE_UpdateCETabEnabledState()
+    local enabled = ConsumesManager_Options.showColdEmbrace and true or false
+    local mainFrame = ConsumesManager_MainFrame
+    if not mainFrame then
+        return
+    end
+
+    local tab = mainFrame.CETabButton
+    if tab and tab.iconText then
+        if enabled then
+            tab.iconText:SetTextColor(1, 0.85, 0.2)
+        else
+            tab.iconText:SetTextColor(0.6, 0.6, 0.6)
+        end
+    end
+
+    local content = mainFrame.CETabContent
+    if content then
+        if content.CETitle then
+            if enabled then
+                content.CETitle:SetTextColor(1, 0.85, 0.2)
+            else
+                content.CETitle:SetTextColor(0.6, 0.6, 0.6)
+            end
+        end
+        if content.CESubtitle then
+            if enabled then
+                content.CESubtitle:SetTextColor(1, 1, 1)
+            else
+                content.CESubtitle:SetTextColor(0.6, 0.6, 0.6)
+            end
+        end
+    end
+end
+
+function CE_CreateCETab()
+    if not ConsumesManager_MainFrame or not ConsumesManager_MainFrame.tabs or not ConsumesManager_Tabs then
+        return
+    end
+
+    local tabIndex = 6
+    local xOffset = 230
+    local tooltipText = "Cold Embrace"
+
+    if ConsumesManager_MainFrame.CETabButton and ConsumesManager_MainFrame.CETabContent then
+        ConsumesManager_MainFrame.CETabButton:Show()
+        ConsumesManager_MainFrame.CETabContent:Hide()
+        ConsumesManager_Tabs[tabIndex] = ConsumesManager_MainFrame.CETabButton
+        ConsumesManager_MainFrame.tabs[tabIndex] = ConsumesManager_MainFrame.CETabContent
+        CE_UpdateCETabEnabledState()
+        return
+    end
+
+    local tab = CE_CreateCETabButton(tabIndex, xOffset, tooltipText)
+    local content = CE_CreateCETabContent(tabIndex)
+    if not tab or not content then
+        return
+    end
+
+    ConsumesManager_Tabs[tabIndex] = tab
+    ConsumesManager_MainFrame.tabs[tabIndex] = content
+    ConsumesManager_MainFrame.CETabButton = tab
+    ConsumesManager_MainFrame.CETabContent = content
+    CE_UpdateCETabEnabledState()
+end
+
+function CE_RemoveCETab()
+    local mainFrame = ConsumesManager_MainFrame
+    if not mainFrame then
+        return
+    end
+
+    local tabIndex = 6
+    local tab = mainFrame.CETabButton
+    local content = mainFrame.CETabContent
+
+    if content and content.IsShown and content:IsShown() then
+        ConsumesManager_ShowTab(1)
+    end
+
+    if tab then
+        tab:Hide()
+    end
+    if content then
+        content:Hide()
+    end
+
+    if ConsumesManager_Tabs then
+        ConsumesManager_Tabs[tabIndex] = nil
+    end
+    if mainFrame.tabs then
+        mainFrame.tabs[tabIndex] = nil
+    end
+
+    mainFrame.CETabButton = nil
+    mainFrame.CETabContent = nil
+end
+
+function CE_UpdateCETabState()
+    CE_CreateCETab()
 end

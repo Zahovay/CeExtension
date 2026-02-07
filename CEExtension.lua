@@ -4,9 +4,6 @@ local orig_CreateSettingsContent = ConsumesManager_CreateSettingsContent
 if type(orig_CreateSettingsContent) == "function" then
     function ConsumesManager_CreateSettingsContent(parentFrame)
         orig_CreateSettingsContent(parentFrame)
-        if type(CE_CreateSettingsCheckbox) == "function" then
-            CE_CreateSettingsCheckbox(parentFrame)
-        end
     end
 end
 
@@ -62,6 +59,9 @@ local orig_ShowMainWindow = ConsumesManager_ShowMainWindow
 if type(orig_ShowMainWindow) == "function" then
     function ConsumesManager_ShowMainWindow()
         orig_ShowMainWindow()
+        if type(CE_CreateCETab) == "function" then
+            CE_CreateCETab()
+        end
         if type(CE_SetClassDropdownToCurrent) == "function" then
             CE_SetClassDropdownToCurrent()
         end
@@ -70,6 +70,16 @@ if type(orig_ShowMainWindow) == "function" then
         end
         if type(CE_UpdateFooterText) == "function" then
             CE_UpdateFooterText()
+        end
+    end
+end
+
+local orig_CreateMainWindow = ConsumesManager_CreateMainWindow
+if type(orig_CreateMainWindow) == "function" then
+    function ConsumesManager_CreateMainWindow()
+        orig_CreateMainWindow()
+        if type(CE_CreateCETab) == "function" then
+            CE_CreateCETab()
         end
     end
 end
