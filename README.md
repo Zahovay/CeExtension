@@ -9,6 +9,7 @@ Cold Embrace extension for [ConsumesManager](https://github.com/Cinecom/Consumes
 - Includes additional consumables not present in the base addon for comprehensive CE readiness.
 - Fully compatible with existing ConsumesManager features.
 - CE presets and role/spec grouping in the Presets tab.
+- Collapsible CE groups with status coloring and completion totals.
 - CE tab with extension settings and configuration.
 - Non-destructive: base addon remains intact and CE changes are removed when disabled (CE tab remains visible).
 
@@ -52,6 +53,12 @@ Optional configuration:
    <img src="images/potion_list.png" alt="CE Presets">
    <br>
    <em>View CE requirements in the Presets tab.</em>
+</p>
+
+<p>
+   <img src="images/collapsed_menu.png" alt="CE Collapsed Groups">
+   <br>
+   <em>Collapsed CE groups show completion status.</em>
 </p>
 
 ## How to Switch On/Off
