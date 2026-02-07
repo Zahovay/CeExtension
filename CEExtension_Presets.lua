@@ -177,17 +177,50 @@ local function CE_BuildGroupItems(entries, getItemIdByName, getTotalCount, getGr
     return items
 end
 
-local function CE_AddGroupHeader(scrollChild, index, lineHeight, labelText, parentFrame)
+local function CE_AddGroupHeader(scrollChild, index, lineHeight, labelText, parentFrame, groupKey, isCollapsed, statusColor, requiredTotal, ownedTotal, mode)
     local groupFrame = CreateFrame("Frame", "ConsumesManager_CEGroupFrame" .. index, scrollChild)
     groupFrame:SetWidth(scrollChild:GetWidth() - 10)
     groupFrame:SetHeight(lineHeight)
     groupFrame:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -((index - 1) * lineHeight))
     groupFrame:Show()
+    groupFrame:EnableMouse(true)
 
     local groupLabel = groupFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     groupLabel:SetPoint("LEFT", groupFrame, "LEFT", 0, 0)
-    groupLabel:SetText(labelText or "")
+    if isCollapsed then
+        local left = requiredTotal or 0
+        local right = ownedTotal or 0
+        if mode == "ownedmode" then
+            left, right = right, left
+        end
+        groupLabel:SetText("[+] " .. (labelText or "") .. " (" .. left .. "/" .. right .. ")")
+    else
+        groupLabel:SetText("[-] " .. (labelText or ""))
+    end
     groupLabel:SetJustifyH("LEFT")
+
+    if isCollapsed and statusColor then
+        if statusColor == "green" then
+            groupLabel:SetTextColor(0, 1, 0)
+        elseif statusColor == "orange" then
+            groupLabel:SetTextColor(1, 0.4, 0)
+        elseif statusColor == "red" then
+            groupLabel:SetTextColor(1, 0, 0)
+        end
+    else
+        groupLabel:SetTextColor(1, 1, 1)
+    end
+
+    groupFrame:SetScript("OnMouseDown", function()
+        if not groupKey then
+            return
+        end
+        ConsumesManager_Options.ceGroupCollapsed = ConsumesManager_Options.ceGroupCollapsed or {}
+        ConsumesManager_Options.ceGroupCollapsed[groupKey] = not isCollapsed
+        if type(ConsumesManager_UpdatePresetsConsumables) == "function" then
+            ConsumesManager_UpdatePresetsConsumables()
+        end
+    end)
 
     table.insert(parentFrame.presetsConsumables, {
         frame = groupFrame,
@@ -379,6 +412,45 @@ function CE_UpdatePresetsConsumables()
     local selectedClass = ConsumesManager_SelectedClass
     local specGroups = CE_GetSpecGroups(data, selectedClass)
     local groups = CE_BuildGroups(data, role, specGroups, selectedClass)
+    ConsumesManager_Options.ceGroupCollapsed = ConsumesManager_Options.ceGroupCollapsed or {}
+    local collapsedStates = ConsumesManager_Options.ceGroupCollapsed
+
+    local function CE_GetGroupStatus(items)
+        local hasMissing = false
+        local hasPartial = false
+        for i = 1, table.getn(items) do
+            local item = items[i]
+            if item and item.required and item.totalCount < item.required then
+                if item.totalCount == 0 then
+                    hasMissing = true
+                else
+                    hasPartial = true
+                end
+            end
+        end
+        if hasMissing then
+            return "red"
+        end
+        if hasPartial then
+            return "orange"
+        end
+        return "green"
+    end
+
+    local function CE_GetGroupTotals(items)
+        local requiredTotal = 0
+        local ownedTotal = 0
+        for i = 1, table.getn(items) do
+            local item = items[i]
+            if item then
+                requiredTotal = requiredTotal + 1
+                if item.required and item.totalCount and item.totalCount >= item.required then
+                    ownedTotal = ownedTotal + 1
+                end
+            end
+        end
+        return requiredTotal, ownedTotal
+    end
 
     local function CE_IsPrepared()
         local checkGroups = {}
@@ -457,16 +529,24 @@ function CE_UpdatePresetsConsumables()
         local items = CE_BuildGroupItems(entries, CE_GetItemIdByName, CE_GetTotalCount, CE_GetGroupEntry)
 
         if table.getn(items) > 0 then
-            index = CE_AddGroupHeader(scrollChild, index + 1, lineHeight, group.label or "", parentFrame)
-            for j = 1, table.getn(items) do
-                local item = items[j]
-                if item and item.id then
-                    CE_TooltipAllowed[item.id] = true
-                end
-                local nextIndex, wasVisible = CE_AddItemRow(scrollChild, index, lineHeight, item, showUseButton, realmName, playerName, parentFrame)
-                index = nextIndex
-                if wasVisible then
-                    hasAnyVisibleItems = true
+            local groupKey = (ConsumesManager_SelectedClass or "") .. "|" .. (group.label or "") .. "|" .. tostring(i)
+            local statusColor = CE_GetGroupStatus(items)
+            local requiredTotal, ownedTotal = CE_GetGroupTotals(items)
+            local isCollapsed = collapsedStates[groupKey] and true or false
+            local mode = ConsumesManager_Options and ConsumesManager_Options.ceConfigMode or "requiredmode"
+            index = CE_AddGroupHeader(scrollChild, index + 1, lineHeight, group.label or "", parentFrame, groupKey, isCollapsed, statusColor, requiredTotal, ownedTotal, mode)
+            hasAnyVisibleItems = true
+            if not isCollapsed then
+                for j = 1, table.getn(items) do
+                    local item = items[j]
+                    if item and item.id then
+                        CE_TooltipAllowed[item.id] = true
+                    end
+                    local nextIndex, wasVisible = CE_AddItemRow(scrollChild, index, lineHeight, item, showUseButton, realmName, playerName, parentFrame)
+                    index = nextIndex
+                    if wasVisible then
+                        hasAnyVisibleItems = true
+                    end
                 end
             end
         end
