@@ -278,6 +278,9 @@ function CE_CreateSettingsCheckbox(parentFrame)
             ConsumesManager_Options.showColdEmbrace = false
             CE_ResetDropdownSelections()
             CE_RemoveInjectedItemlist()
+            if type(CE_ClosePresetConfigWindow) == "function" then
+                CE_ClosePresetConfigWindow()
+            end
             CE_UpdateFooterText()
         else
             ConsumesManager_Options.showColdEmbrace = checked and true or false
@@ -352,6 +355,9 @@ local function CE_CreateCETabCheckbox(parentFrame)
             ConsumesManager_Options.showColdEmbrace = false
             CE_ResetDropdownSelections()
             CE_RemoveInjectedItemlist()
+            if type(CE_ClosePresetConfigWindow) == "function" then
+                CE_ClosePresetConfigWindow()
+            end
             CE_UpdateFooterText()
         else
             ConsumesManager_Options.showColdEmbrace = checked and true or false
@@ -387,7 +393,7 @@ local function CE_CreateCETabCheckbox(parentFrame)
     end
     subtitleLabel:ClearAllPoints()
     subtitleLabel:SetPoint("TOPLEFT", configLabel, "BOTTOMLEFT", 0, -10)
-    subtitleLabel:SetText("Required positioning")
+    subtitleLabel:SetText("Required/owned order")
     subtitleLabel:SetJustifyH("LEFT")
 
     local function SetRadioSelection(mode)
@@ -409,7 +415,7 @@ local function CE_CreateCETabCheckbox(parentFrame)
         parentFrame.CERadioOne = radioOne
     end
     radioOne:ClearAllPoints()
-    radioOne:SetPoint("TOPLEFT", subtitleLabel, "BOTTOMLEFT", -2, -6)
+    radioOne:SetPoint("TOPLEFT", subtitleLabel, "BOTTOMLEFT", -2, -8)
     radioOne:SetWidth(16)
     radioOne:SetHeight(16)
     radioOne:SetScript("OnClick", function()
@@ -476,6 +482,25 @@ local function CE_CreateCETabCheckbox(parentFrame)
     radioTwoHit:SetScript("OnClick", function()
         if radioTwo.IsEnabled and radioTwo:IsEnabled() then
             radioTwo:Click()
+        end
+    end)
+
+    local presetButton = parentFrame.CEPresetConfigButton
+    if not presetButton then
+        presetButton = CreateFrame("Button", nil, parentFrame, "UIPanelButtonTemplate")
+        parentFrame.CEPresetConfigButton = presetButton
+    end
+    presetButton:ClearAllPoints()
+    presetButton:SetPoint("TOPLEFT", radioTwo, "BOTTOMLEFT", -2, -10)
+    presetButton:SetWidth(160)
+    presetButton:SetHeight(20)
+    presetButton:SetText("Raid consumables Planner")
+    if presetButton.GetFontString and presetButton:GetFontString() then
+        presetButton:GetFontString():SetFont("Fonts\\FRIZQT__.TTF", 10, "NORMAL")
+    end
+    presetButton:SetScript("OnClick", function()
+        if type(CE_ShowPresetConfigWindow) == "function" then
+            CE_ShowPresetConfigWindow()
         end
     end)
 
@@ -655,6 +680,15 @@ CE_UpdateCETabEnabledState = function()
         end
         if content.CERadioTwoHit and content.CERadioTwoHit.EnableMouse then
             content.CERadioTwoHit:EnableMouse(enabled)
+        end
+        if content.CEPresetConfigButton then
+            if enabled then
+                content.CEPresetConfigButton:Enable()
+                content.CEPresetConfigButton:SetAlpha(1)
+            else
+                content.CEPresetConfigButton:Disable()
+                content.CEPresetConfigButton:SetAlpha(0.6)
+            end
         end
     end
 end

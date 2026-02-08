@@ -12,5 +12,6 @@ CEExtension_Init.lua
 CEExtension_Util.lua
 CEExtension_Itemlist.lua
 CEExtension_Presets.lua
+CEExtension_PresetPlanner.lua
 CEExtension_UI.lua
 CEExtension.lua
