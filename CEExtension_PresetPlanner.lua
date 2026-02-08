@@ -145,6 +145,157 @@ local function CE_BuildPlannerRows(scrollChild, parentFrame, items)
             row.amountInput:SetNumeric(true)
             row.amountInput:SetText("0")
 
+            row.excludedBox = CreateFrame("CheckButton", nil, row)
+            row.excludedBox:SetWidth(16)
+            row.excludedBox:SetHeight(16)
+            row.excludedBox:SetNormalTexture("Interface\\Buttons\\UI-CheckBox-Up")
+            row.excludedBox:SetPushedTexture("Interface\\Buttons\\UI-CheckBox-Down")
+            row.excludedBox:SetHighlightTexture("Interface\\Buttons\\UI-CheckBox-Highlight")
+            row.excludedBox:SetCheckedTexture("Interface\\Buttons\\UI-CheckBox-Check")
+
+            row.excludedLabel = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            row.excludedLabel:SetJustifyH("LEFT")
+
+            row.excludedHit = CreateFrame("Button", nil, row)
+            row.excludedHit:EnableMouse(true)
+            row.excludedHit:SetScript("OnClick", function()
+                row.excludedBox:SetChecked(not row.excludedBox:GetChecked())
+            end)
+
+            row.optionalBox = CreateFrame("CheckButton", nil, row)
+            row.optionalBox:SetWidth(16)
+            row.optionalBox:SetHeight(16)
+            row.optionalBox:SetNormalTexture("Interface\\Buttons\\UI-CheckBox-Up")
+            row.optionalBox:SetPushedTexture("Interface\\Buttons\\UI-CheckBox-Down")
+            row.optionalBox:SetHighlightTexture("Interface\\Buttons\\UI-CheckBox-Highlight")
+            row.optionalBox:SetCheckedTexture("Interface\\Buttons\\UI-CheckBox-Check")
+
+            row.optionalLabel = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            row.optionalLabel:SetJustifyH("LEFT")
+
+            row.optionalHit = CreateFrame("Button", nil, row)
+            row.optionalHit:EnableMouse(true)
+            row.optionalHit:SetScript("OnClick", function()
+                row.optionalBox:SetChecked(not row.optionalBox:GetChecked())
+            end)
+
+            row.mandatoryBox = CreateFrame("CheckButton", nil, row)
+            row.mandatoryBox:SetWidth(16)
+            row.mandatoryBox:SetHeight(16)
+            row.mandatoryBox:SetNormalTexture("Interface\\Buttons\\UI-CheckBox-Up")
+            row.mandatoryBox:SetPushedTexture("Interface\\Buttons\\UI-CheckBox-Down")
+            row.mandatoryBox:SetHighlightTexture("Interface\\Buttons\\UI-CheckBox-Highlight")
+            row.mandatoryBox:SetCheckedTexture("Interface\\Buttons\\UI-CheckBox-Check")
+
+            row.mandatoryLabel = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            row.mandatoryLabel:SetJustifyH("LEFT")
+
+            row.mandatoryHit = CreateFrame("Button", nil, row)
+            row.mandatoryHit:EnableMouse(true)
+            row.mandatoryHit:SetScript("OnClick", function()
+                row.mandatoryBox:SetChecked(not row.mandatoryBox:GetChecked())
+            end)
+
+            row.SetStatus = function(target)
+                row.mandatoryBox:SetChecked(false)
+                row.optionalBox:SetChecked(false)
+                row.excludedBox:SetChecked(false)
+                if target then
+                    target:SetChecked(true)
+                end
+            end
+
+            row.mandatoryBox:SetScript("OnClick", function()
+                row.SetStatus(row.mandatoryBox:GetChecked() and row.mandatoryBox or nil)
+            end)
+            row.optionalBox:SetScript("OnClick", function()
+                row.SetStatus(row.optionalBox:GetChecked() and row.optionalBox or nil)
+            end)
+            row.excludedBox:SetScript("OnClick", function()
+                row.SetStatus(row.excludedBox:GetChecked() and row.excludedBox or nil)
+            end)
+
+            row.UpdateEnabled = function()
+                local enabled = row.checkbox:GetChecked() == 1
+                if enabled then
+                    row.label:SetTextColor(1, 1, 1)
+                    if row.amountInput and row.amountInput.Enable then
+                        row.amountInput:Enable()
+                        row.amountInput:SetAlpha(1)
+                    end
+                    if row.mandatoryBox and row.mandatoryBox.Enable then
+                        row.mandatoryBox:Enable()
+                        row.mandatoryBox:SetAlpha(1)
+                    end
+                    if row.optionalBox and row.optionalBox.Enable then
+                        row.optionalBox:Enable()
+                        row.optionalBox:SetAlpha(1)
+                    end
+                    if row.excludedBox and row.excludedBox.Enable then
+                        row.excludedBox:Enable()
+                        row.excludedBox:SetAlpha(1)
+                    end
+                    if row.mandatoryLabel then
+                        row.mandatoryLabel:SetTextColor(1, 1, 1)
+                    end
+                    if row.optionalLabel then
+                        row.optionalLabel:SetTextColor(1, 1, 1)
+                    end
+                    if row.excludedLabel then
+                        row.excludedLabel:SetTextColor(1, 1, 1)
+                    end
+                else
+                    row.label:SetTextColor(0.6, 0.6, 0.6)
+                    if row.amountInput and row.amountInput.Disable then
+                        row.amountInput:Disable()
+                        row.amountInput:SetAlpha(0.6)
+                    end
+                    if row.mandatoryBox and row.mandatoryBox.Disable then
+                        row.mandatoryBox:Disable()
+                        row.mandatoryBox:SetAlpha(0.6)
+                    end
+                    if row.optionalBox and row.optionalBox.Disable then
+                        row.optionalBox:Disable()
+                        row.optionalBox:SetAlpha(0.6)
+                    end
+                    if row.excludedBox and row.excludedBox.Disable then
+                        row.excludedBox:Disable()
+                        row.excludedBox:SetAlpha(0.6)
+                    end
+                    if row.mandatoryLabel then
+                        row.mandatoryLabel:SetTextColor(0.6, 0.6, 0.6)
+                    end
+                    if row.optionalLabel then
+                        row.optionalLabel:SetTextColor(0.6, 0.6, 0.6)
+                    end
+                    if row.excludedLabel then
+                        row.excludedLabel:SetTextColor(0.6, 0.6, 0.6)
+                    end
+                end
+            end
+
+            row.checkbox:SetScript("OnClick", function()
+                row.UpdateEnabled()
+            end)
+            row.labelHit:SetScript("OnClick", function()
+                row.checkbox:SetChecked(not row.checkbox:GetChecked())
+                row.UpdateEnabled()
+            end)
+            row:SetScript("OnMouseDown", function()
+                row.checkbox:SetChecked(not row.checkbox:GetChecked())
+                row.UpdateEnabled()
+            end)
+
+            row.mandatoryHit:SetScript("OnClick", function()
+                row.SetStatus(row.mandatoryBox:GetChecked() and nil or row.mandatoryBox)
+            end)
+            row.optionalHit:SetScript("OnClick", function()
+                row.SetStatus(row.optionalBox:GetChecked() and nil or row.optionalBox)
+            end)
+            row.excludedHit:SetScript("OnClick", function()
+                row.SetStatus(row.excludedBox:GetChecked() and nil or row.excludedBox)
+            end)
+
             parentFrame.plannerRows[i] = row
         end
 
@@ -165,7 +316,44 @@ local function CE_BuildPlannerRows(scrollChild, parentFrame, items)
         row.labelHit:SetPoint("BOTTOMRIGHT", row.label, "BOTTOMRIGHT", 0, 0)
 
         row.amountInput:ClearAllPoints()
-        row.amountInput:SetPoint("RIGHT", row, "RIGHT", -6, 0)
+        row.amountInput:SetPoint("RIGHT", row, "RIGHT", 8, 0)
+
+        row.excludedLabel:ClearAllPoints()
+        row.excludedLabel:SetPoint("RIGHT", row.amountInput, "LEFT", -40, 0)
+        row.excludedLabel:SetText("Excluded")
+
+        row.excludedBox:ClearAllPoints()
+        row.excludedBox:SetPoint("RIGHT", row.excludedLabel, "LEFT", -4, 0)
+
+        row.excludedHit:ClearAllPoints()
+        row.excludedHit:SetPoint("TOPLEFT", row.excludedLabel, "TOPLEFT", 0, 0)
+        row.excludedHit:SetPoint("BOTTOMRIGHT", row.excludedLabel, "BOTTOMRIGHT", 0, 0)
+
+        row.optionalLabel:ClearAllPoints()
+        row.optionalLabel:SetPoint("RIGHT", row.excludedBox, "LEFT", -22, 0)
+        row.optionalLabel:SetText("Optional")
+
+        row.optionalBox:ClearAllPoints()
+        row.optionalBox:SetPoint("RIGHT", row.optionalLabel, "LEFT", -4, 0)
+
+        row.optionalHit:ClearAllPoints()
+        row.optionalHit:SetPoint("TOPLEFT", row.optionalLabel, "TOPLEFT", 0, 0)
+        row.optionalHit:SetPoint("BOTTOMRIGHT", row.optionalLabel, "BOTTOMRIGHT", 0, 0)
+
+        row.mandatoryLabel:ClearAllPoints()
+        row.mandatoryLabel:SetPoint("RIGHT", row.optionalBox, "LEFT", -22, 0)
+        row.mandatoryLabel:SetText("Mandatory")
+
+        row.mandatoryBox:ClearAllPoints()
+        row.mandatoryBox:SetPoint("RIGHT", row.mandatoryLabel, "LEFT", -4, 0)
+
+        row.mandatoryHit:ClearAllPoints()
+        row.mandatoryHit:SetPoint("TOPLEFT", row.mandatoryLabel, "TOPLEFT", 0, 0)
+        row.mandatoryHit:SetPoint("BOTTOMRIGHT", row.mandatoryLabel, "BOTTOMRIGHT", 0, 0)
+
+        if row.UpdateEnabled then
+            row.UpdateEnabled()
+        end
     end
 
     local existingCount = table.getn(parentFrame.plannerRows)
