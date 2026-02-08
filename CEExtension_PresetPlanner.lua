@@ -36,6 +36,226 @@ local function CE_SetTabButtonState(button, isActive)
     end
 end
 
+local function CE_GetPlannerPotionItems()
+    local results = {}
+    local seen = {}
+
+    if type(consumablesCategories) == "table" then
+        for categoryName, items in pairs(consumablesCategories) do
+            local categoryLower = type(categoryName) == "string" and string.lower(categoryName) or ""
+            local isPotionCategory = string.find(categoryLower, "potion", 1, true) ~= nil
+                or string.find(categoryLower, "elixir", 1, true) ~= nil
+                or string.find(categoryLower, "flask", 1, true) ~= nil
+            if isPotionCategory and type(items) == "table" then
+                for i = 1, table.getn(items) do
+                    local item = items[i]
+                    if item and item.id and not seen[item.id] then
+                        table.insert(results, { id = item.id, name = item.name or "" })
+                        seen[item.id] = true
+                    end
+                end
+            end
+        end
+    end
+
+    if table.getn(results) == 0 and type(consumablesNameToID) == "table" then
+        for itemName, itemId in pairs(consumablesNameToID) do
+            if type(itemName) == "string" then
+                local nameLower = string.lower(itemName)
+                local isPotionItem = string.find(nameLower, "potion", 1, true) ~= nil
+                    or string.find(nameLower, "elixir", 1, true) ~= nil
+                    or string.find(nameLower, "flask", 1, true) ~= nil
+                if isPotionItem and not seen[itemId] then
+                    table.insert(results, { id = itemId, name = itemName })
+                    seen[itemId] = true
+                end
+            end
+        end
+    end
+
+    table.sort(results, function(a, b)
+        return (a.name or "") < (b.name or "")
+    end)
+
+    return results
+end
+
+local function CE_ClearPlannerRows(parentFrame)
+    if not parentFrame or not parentFrame.plannerRows then
+        return
+    end
+    local count = table.getn(parentFrame.plannerRows)
+    for i = 1, count do
+        local row = parentFrame.plannerRows[i]
+        if row and row.Hide then
+            row:Hide()
+        end
+    end
+    parentFrame.plannerRows = {}
+end
+
+local function CE_BuildPlannerRows(scrollChild, parentFrame, items)
+    if not scrollChild or not parentFrame then
+        return
+    end
+
+    CE_ClearPlannerRows(parentFrame)
+    parentFrame.plannerRows = {}
+
+    local lineHeight = 18
+    local count = table.getn(items)
+    if count == 0 then
+        local emptyLabel = parentFrame.plannerEmptyLabel
+        if not emptyLabel then
+            emptyLabel = parentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            parentFrame.plannerEmptyLabel = emptyLabel
+        end
+        emptyLabel:SetPoint("TOPLEFT", parentFrame, "TOPLEFT", 10, -10)
+        emptyLabel:SetText("No potions found.")
+        emptyLabel:SetJustifyH("LEFT")
+        emptyLabel:Show()
+        scrollChild:SetHeight(lineHeight)
+        return
+    end
+
+    if parentFrame.plannerEmptyLabel then
+        parentFrame.plannerEmptyLabel:Hide()
+    end
+
+    for i = 1, count do
+        local item = items[i]
+        local row = CreateFrame("Frame", nil, scrollChild)
+        row:SetWidth(scrollChild:GetWidth() - 10)
+        row:SetHeight(lineHeight)
+        row:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -((i - 1) * lineHeight))
+
+        local checkbox = CreateFrame("CheckButton", nil, row)
+        checkbox:SetWidth(16)
+        checkbox:SetHeight(16)
+        checkbox:SetPoint("LEFT", row, "LEFT", 0, 0)
+        checkbox:SetNormalTexture("Interface\\Buttons\\UI-CheckBox-Up")
+        checkbox:SetPushedTexture("Interface\\Buttons\\UI-CheckBox-Down")
+        checkbox:SetHighlightTexture("Interface\\Buttons\\UI-CheckBox-Highlight")
+        checkbox:SetCheckedTexture("Interface\\Buttons\\UI-CheckBox-Check")
+
+        local label = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        label:SetPoint("LEFT", checkbox, "RIGHT", 6, 0)
+        label:SetText(item.name or "")
+        label:SetJustifyH("LEFT")
+
+        row:SetScript("OnMouseDown", function()
+            checkbox:SetChecked(not checkbox:GetChecked())
+        end)
+
+        local labelHit = CreateFrame("Button", nil, row)
+        labelHit:SetPoint("TOPLEFT", label, "TOPLEFT", 0, 0)
+        labelHit:SetPoint("BOTTOMRIGHT", label, "BOTTOMRIGHT", 0, 0)
+        labelHit:EnableMouse(true)
+        labelHit:SetScript("OnClick", function()
+            checkbox:SetChecked(not checkbox:GetChecked())
+        end)
+
+        table.insert(parentFrame.plannerRows, row)
+    end
+
+    scrollChild:SetHeight(count * lineHeight)
+end
+
+local CE_UpdatePlannerList
+
+local function CE_CreatePlannerList(parentFrame)
+    if not parentFrame or parentFrame.plannerBuilt then
+        return
+    end
+
+    local scrollFrame = CreateFrame("ScrollFrame", nil, parentFrame)
+    scrollFrame:SetPoint("TOPLEFT", parentFrame, "TOPLEFT", 8, -8)
+    scrollFrame:SetPoint("BOTTOMRIGHT", parentFrame, "BOTTOMRIGHT", -26, 8)
+    scrollFrame:EnableMouseWheel(true)
+
+    local scrollChild = CreateFrame("Frame", nil, scrollFrame)
+    if parentFrame.GetWidth and parentFrame:GetWidth() > 0 then
+        scrollChild:SetWidth(parentFrame:GetWidth() - 40)
+    else
+        scrollChild:SetWidth(1)
+    end
+    scrollChild:SetHeight(1)
+    scrollFrame:SetScrollChild(scrollChild)
+
+    local scrollBar = CreateFrame("Slider", nil, scrollFrame, "UIPanelScrollBarTemplate")
+    scrollBar:SetPoint("TOPLEFT", scrollFrame, "TOPRIGHT", 4, -16)
+    scrollBar:SetPoint("BOTTOMLEFT", scrollFrame, "BOTTOMRIGHT", 4, 16)
+    scrollBar:SetMinMaxValues(0, 0)
+    scrollBar:SetValueStep(1)
+    scrollBar:SetValue(0)
+    scrollBar:SetWidth(16)
+    scrollBar:SetScript("OnValueChanged", function()
+        scrollFrame:SetVerticalScroll(this:GetValue())
+    end)
+
+    scrollFrame:SetScript("OnMouseWheel", function()
+        local current = scrollBar:GetValue()
+        local step = 18
+        local minVal, maxVal = scrollBar:GetMinMaxValues()
+        local newVal = current - (step * arg1)
+        if newVal < minVal then
+            newVal = minVal
+        elseif newVal > maxVal then
+            newVal = maxVal
+        end
+        scrollBar:SetValue(newVal)
+    end)
+
+    parentFrame.plannerScrollFrame = scrollFrame
+    parentFrame.plannerScrollChild = scrollChild
+    parentFrame.plannerScrollBar = scrollBar
+    parentFrame.plannerBuilt = true
+
+    local existingOnShow = parentFrame:GetScript("OnShow")
+    parentFrame:SetScript("OnShow", function()
+        if existingOnShow then
+            existingOnShow()
+        end
+        CE_UpdatePlannerList(parentFrame)
+    end)
+end
+
+CE_UpdatePlannerList = function(parentFrame)
+    if not parentFrame or not parentFrame.plannerBuilt then
+        return
+    end
+    if parentFrame.plannerScrollChild and parentFrame.GetWidth and parentFrame:GetWidth() > 0 then
+        parentFrame.plannerScrollChild:SetWidth(parentFrame:GetWidth() - 40)
+    end
+    local items = CE_GetPlannerPotionItems()
+    CE_BuildPlannerRows(parentFrame.plannerScrollChild, parentFrame, items)
+
+    local scrollFrame = parentFrame.plannerScrollFrame
+    local scrollBar = parentFrame.plannerScrollBar
+    local scrollChild = parentFrame.plannerScrollChild
+    if scrollFrame and scrollBar and scrollChild then
+        local totalHeight = scrollChild:GetHeight()
+        local shownHeight = scrollFrame:GetHeight()
+        local maxScroll = math.max(0, totalHeight - shownHeight)
+        scrollBar:SetMinMaxValues(0, maxScroll)
+        if maxScroll > 0 then
+            scrollBar:Show()
+        else
+            scrollBar:Hide()
+        end
+    end
+end
+
+local function CE_RefreshPlannerTabs(frame)
+    if not frame or not frame.tabContents then
+        return
+    end
+    local count = table.getn(frame.tabContents)
+    for i = 1, count do
+        CE_UpdatePlannerList(frame.tabContents[i])
+    end
+end
+
 local function CE_SelectPresetTab(frame, index)
     if not frame or not frame.tabContents or not frame.tabButtons then
         return
@@ -197,6 +417,8 @@ local function CE_BuildPresetTabs(frame)
         content:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -20, 40)
         content:Hide()
         frame.tabContents[i] = content
+        CE_CreatePlannerList(content)
+        CE_UpdatePlannerList(content)
     end
 
     if count == 0 then
@@ -313,5 +535,6 @@ function CE_ShowPresetConfigWindow()
 
     ConsumesManager_MainFrame:Hide()
     frame:Show()
+    CE_RefreshPlannerTabs(frame)
     CE_SelectPresetTab(frame, frame.selectedTab or 1)
 end
