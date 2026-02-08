@@ -80,29 +80,14 @@ local function CE_GetPlannerPotionItems()
     return results
 end
 
-local function CE_ClearPlannerRows(parentFrame)
-    if not parentFrame or not parentFrame.plannerRows then
-        return
-    end
-    local count = table.getn(parentFrame.plannerRows)
-    for i = 1, count do
-        local row = parentFrame.plannerRows[i]
-        if row and row.Hide then
-            row:Hide()
-        end
-    end
-    parentFrame.plannerRows = {}
-end
-
 local function CE_BuildPlannerRows(scrollChild, parentFrame, items)
     if not scrollChild or not parentFrame then
         return
     end
 
-    CE_ClearPlannerRows(parentFrame)
-    parentFrame.plannerRows = {}
+    parentFrame.plannerRows = parentFrame.plannerRows or {}
 
-    local lineHeight = 18
+    local lineHeight = 24
     local count = table.getn(items)
     if count == 0 then
         local emptyLabel = parentFrame.plannerEmptyLabel
@@ -122,40 +107,73 @@ local function CE_BuildPlannerRows(scrollChild, parentFrame, items)
         parentFrame.plannerEmptyLabel:Hide()
     end
 
+    local tabName = parentFrame.plannerTabName or "Tab"
+    tabName = string.gsub(tabName, "%s+", "")
+
     for i = 1, count do
         local item = items[i]
-        local row = CreateFrame("Frame", nil, scrollChild)
-        row:SetWidth(scrollChild:GetWidth() - 10)
-        row:SetHeight(lineHeight)
+        local row = parentFrame.plannerRows[i]
+        if not row then
+            row = CreateFrame("Frame", nil, scrollChild)
+            row:SetHeight(lineHeight)
+            row.checkbox = CreateFrame("CheckButton", nil, row)
+            row.checkbox:SetWidth(16)
+            row.checkbox:SetHeight(16)
+            row.checkbox:SetNormalTexture("Interface\\Buttons\\UI-CheckBox-Up")
+            row.checkbox:SetPushedTexture("Interface\\Buttons\\UI-CheckBox-Down")
+            row.checkbox:SetHighlightTexture("Interface\\Buttons\\UI-CheckBox-Highlight")
+            row.checkbox:SetCheckedTexture("Interface\\Buttons\\UI-CheckBox-Check")
+
+            row.label = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            row.label:SetJustifyH("LEFT")
+
+            row:SetScript("OnMouseDown", function()
+                row.checkbox:SetChecked(not row.checkbox:GetChecked())
+            end)
+
+            row.labelHit = CreateFrame("Button", nil, row)
+            row.labelHit:EnableMouse(true)
+            row.labelHit:SetScript("OnClick", function()
+                row.checkbox:SetChecked(not row.checkbox:GetChecked())
+            end)
+
+            row.amountInputName = "CEPlannerAmountInput" .. tabName .. "_" .. i .. "_" .. (item.id or 0)
+            row.amountInput = CreateFrame("EditBox", row.amountInputName, row, "InputBoxTemplate")
+            row.amountInput:SetWidth(36)
+            row.amountInput:SetHeight(16)
+            row.amountInput:SetAutoFocus(false)
+            row.amountInput:SetNumeric(true)
+            row.amountInput:SetText("0")
+
+            parentFrame.plannerRows[i] = row
+        end
+
+        row:ClearAllPoints()
         row:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -((i - 1) * lineHeight))
+        row:SetPoint("TOPRIGHT", scrollChild, "TOPRIGHT", -4, -((i - 1) * lineHeight))
+        row:Show()
 
-        local checkbox = CreateFrame("CheckButton", nil, row)
-        checkbox:SetWidth(16)
-        checkbox:SetHeight(16)
-        checkbox:SetPoint("LEFT", row, "LEFT", 0, 0)
-        checkbox:SetNormalTexture("Interface\\Buttons\\UI-CheckBox-Up")
-        checkbox:SetPushedTexture("Interface\\Buttons\\UI-CheckBox-Down")
-        checkbox:SetHighlightTexture("Interface\\Buttons\\UI-CheckBox-Highlight")
-        checkbox:SetCheckedTexture("Interface\\Buttons\\UI-CheckBox-Check")
+        row.checkbox:ClearAllPoints()
+        row.checkbox:SetPoint("LEFT", row, "LEFT", 0, 0)
 
-        local label = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        label:SetPoint("LEFT", checkbox, "RIGHT", 6, 0)
-        label:SetText(item.name or "")
-        label:SetJustifyH("LEFT")
+        row.label:ClearAllPoints()
+        row.label:SetPoint("LEFT", row.checkbox, "RIGHT", 6, 0)
+        row.label:SetText(item.name or "")
 
-        row:SetScript("OnMouseDown", function()
-            checkbox:SetChecked(not checkbox:GetChecked())
-        end)
+        row.labelHit:ClearAllPoints()
+        row.labelHit:SetPoint("TOPLEFT", row.label, "TOPLEFT", 0, 0)
+        row.labelHit:SetPoint("BOTTOMRIGHT", row.label, "BOTTOMRIGHT", 0, 0)
 
-        local labelHit = CreateFrame("Button", nil, row)
-        labelHit:SetPoint("TOPLEFT", label, "TOPLEFT", 0, 0)
-        labelHit:SetPoint("BOTTOMRIGHT", label, "BOTTOMRIGHT", 0, 0)
-        labelHit:EnableMouse(true)
-        labelHit:SetScript("OnClick", function()
-            checkbox:SetChecked(not checkbox:GetChecked())
-        end)
+        row.amountInput:ClearAllPoints()
+        row.amountInput:SetPoint("RIGHT", row, "RIGHT", -6, 0)
+    end
 
-        table.insert(parentFrame.plannerRows, row)
+    local existingCount = table.getn(parentFrame.plannerRows)
+    for i = count + 1, existingCount do
+        local row = parentFrame.plannerRows[i]
+        if row and row.Hide then
+            row:Hide()
+        end
     end
 
     scrollChild:SetHeight(count * lineHeight)
@@ -216,7 +234,15 @@ local function CE_CreatePlannerList(parentFrame)
         if existingOnShow then
             existingOnShow()
         end
-        CE_UpdatePlannerList(parentFrame)
+        local updater = parentFrame.plannerOnShowUpdate
+        if not updater then
+            updater = CreateFrame("Frame", nil, parentFrame)
+            parentFrame.plannerOnShowUpdate = updater
+        end
+        updater:SetScript("OnUpdate", function()
+            updater:SetScript("OnUpdate", nil)
+            CE_UpdatePlannerList(parentFrame)
+        end)
     end)
 end
 
@@ -224,8 +250,15 @@ CE_UpdatePlannerList = function(parentFrame)
     if not parentFrame or not parentFrame.plannerBuilt then
         return
     end
-    if parentFrame.plannerScrollChild and parentFrame.GetWidth and parentFrame:GetWidth() > 0 then
-        parentFrame.plannerScrollChild:SetWidth(parentFrame:GetWidth() - 40)
+    local width = 0
+    if parentFrame.GetWidth then
+        width = parentFrame:GetWidth() or 0
+    end
+    if width <= 0 and parentFrame.plannerScrollFrame and parentFrame.plannerScrollFrame.GetWidth then
+        width = parentFrame.plannerScrollFrame:GetWidth() or 0
+    end
+    if parentFrame.plannerScrollChild and width > 0 then
+        parentFrame.plannerScrollChild:SetWidth(width - 40)
     end
     local items = CE_GetPlannerPotionItems()
     CE_BuildPlannerRows(parentFrame.plannerScrollChild, parentFrame, items)
@@ -285,6 +318,9 @@ local function CE_SelectPresetTab(frame, index)
     end
     if type(CE_UpdateTabSeparatorLine) == "function" then
         CE_UpdateTabSeparatorLine(frame, frame.tabButtons[index])
+    end
+    if type(CE_UpdatePlannerList) == "function" then
+        CE_UpdatePlannerList(frame.tabContents[index])
     end
 end
 
@@ -416,9 +452,9 @@ local function CE_BuildPresetTabs(frame)
         content:SetPoint("TOPLEFT", frame, "TOPLEFT", 20, -90)
         content:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -20, 40)
         content:Hide()
+        content.plannerTabName = raidName or ("Tab" .. i)
         frame.tabContents[i] = content
         CE_CreatePlannerList(content)
-        CE_UpdatePlannerList(content)
     end
 
     if count == 0 then
@@ -511,7 +547,6 @@ local function CE_CreatePresetConfigWindow()
     end)
 
     CE_BuildPresetTabs(frame)
-    CE_SelectPresetTab(frame, 1)
 
     frame:Hide()
     ConsumesManager_CEPresetFrame = frame
@@ -535,6 +570,5 @@ function CE_ShowPresetConfigWindow()
 
     ConsumesManager_MainFrame:Hide()
     frame:Show()
-    CE_RefreshPlannerTabs(frame)
     CE_SelectPresetTab(frame, frame.selectedTab or 1)
 end
