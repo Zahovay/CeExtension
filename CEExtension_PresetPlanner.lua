@@ -213,6 +213,7 @@ end
 function CE_ClosePresetConfigWindow()
     local frame = ConsumesManager_CEPresetFrame
     if frame and frame.Hide then
+        frame.ceReturnToMain = true
         frame:Hide()
     end
     if ConsumesManager_MainFrame and ConsumesManager_MainFrame.Show then
@@ -239,6 +240,16 @@ local function CE_CreatePresetConfigWindow()
     end)
     frame:SetScript("OnDragStop", function()
         this:StopMovingOrSizing()
+    end)
+
+    table.insert(UISpecialFrames, "ConsumesManager_CEPresetFrame")
+    frame:SetScript("OnHide", function()
+        if frame.ceReturnToMain then
+            frame.ceReturnToMain = false
+            if ConsumesManager_MainFrame and ConsumesManager_MainFrame.Show then
+                ConsumesManager_MainFrame:Show()
+            end
+        end
     end)
 
     local background = frame:CreateTexture(nil, "BACKGROUND")
