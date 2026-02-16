@@ -194,6 +194,8 @@ local function CE_BuildPlannerRows(scrollChild, parentFrame, items)
                 row.SetStatus(row.optionalBox:GetChecked() and row.optionalBox or nil)
             end)
 
+            row.SetStatus(row.mandatoryBox)
+
             row.UpdateEnabled = function()
                 local enabled = row.checkbox:GetChecked() == 1
                 if enabled then
