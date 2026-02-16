@@ -145,23 +145,6 @@ local function CE_BuildPlannerRows(scrollChild, parentFrame, items)
             row.amountInput:SetNumeric(true)
             row.amountInput:SetText("0")
 
-            row.excludedBox = CreateFrame("CheckButton", nil, row)
-            row.excludedBox:SetWidth(16)
-            row.excludedBox:SetHeight(16)
-            row.excludedBox:SetNormalTexture("Interface\\Buttons\\UI-CheckBox-Up")
-            row.excludedBox:SetPushedTexture("Interface\\Buttons\\UI-CheckBox-Down")
-            row.excludedBox:SetHighlightTexture("Interface\\Buttons\\UI-CheckBox-Highlight")
-            row.excludedBox:SetCheckedTexture("Interface\\Buttons\\UI-CheckBox-Check")
-
-            row.excludedLabel = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-            row.excludedLabel:SetJustifyH("LEFT")
-
-            row.excludedHit = CreateFrame("Button", nil, row)
-            row.excludedHit:EnableMouse(true)
-            row.excludedHit:SetScript("OnClick", function()
-                row.excludedBox:SetChecked(not row.excludedBox:GetChecked())
-            end)
-
             row.optionalBox = CreateFrame("CheckButton", nil, row)
             row.optionalBox:SetWidth(16)
             row.optionalBox:SetHeight(16)
@@ -199,7 +182,6 @@ local function CE_BuildPlannerRows(scrollChild, parentFrame, items)
             row.SetStatus = function(target)
                 row.mandatoryBox:SetChecked(false)
                 row.optionalBox:SetChecked(false)
-                row.excludedBox:SetChecked(false)
                 if target then
                     target:SetChecked(true)
                 end
@@ -210,9 +192,6 @@ local function CE_BuildPlannerRows(scrollChild, parentFrame, items)
             end)
             row.optionalBox:SetScript("OnClick", function()
                 row.SetStatus(row.optionalBox:GetChecked() and row.optionalBox or nil)
-            end)
-            row.excludedBox:SetScript("OnClick", function()
-                row.SetStatus(row.excludedBox:GetChecked() and row.excludedBox or nil)
             end)
 
             row.UpdateEnabled = function()
@@ -231,18 +210,11 @@ local function CE_BuildPlannerRows(scrollChild, parentFrame, items)
                         row.optionalBox:Enable()
                         row.optionalBox:SetAlpha(1)
                     end
-                    if row.excludedBox and row.excludedBox.Enable then
-                        row.excludedBox:Enable()
-                        row.excludedBox:SetAlpha(1)
-                    end
                     if row.mandatoryLabel then
                         row.mandatoryLabel:SetTextColor(1, 1, 1)
                     end
                     if row.optionalLabel then
                         row.optionalLabel:SetTextColor(1, 1, 1)
-                    end
-                    if row.excludedLabel then
-                        row.excludedLabel:SetTextColor(1, 1, 1)
                     end
                 else
                     row.label:SetTextColor(0.6, 0.6, 0.6)
@@ -258,18 +230,11 @@ local function CE_BuildPlannerRows(scrollChild, parentFrame, items)
                         row.optionalBox:Disable()
                         row.optionalBox:SetAlpha(0.6)
                     end
-                    if row.excludedBox and row.excludedBox.Disable then
-                        row.excludedBox:Disable()
-                        row.excludedBox:SetAlpha(0.6)
-                    end
                     if row.mandatoryLabel then
                         row.mandatoryLabel:SetTextColor(0.6, 0.6, 0.6)
                     end
                     if row.optionalLabel then
                         row.optionalLabel:SetTextColor(0.6, 0.6, 0.6)
-                    end
-                    if row.excludedLabel then
-                        row.excludedLabel:SetTextColor(0.6, 0.6, 0.6)
                     end
                 end
             end
@@ -291,9 +256,6 @@ local function CE_BuildPlannerRows(scrollChild, parentFrame, items)
             end)
             row.optionalHit:SetScript("OnClick", function()
                 row.SetStatus(row.optionalBox:GetChecked() and nil or row.optionalBox)
-            end)
-            row.excludedHit:SetScript("OnClick", function()
-                row.SetStatus(row.excludedBox:GetChecked() and nil or row.excludedBox)
             end)
 
             parentFrame.plannerRows[i] = row
@@ -318,19 +280,8 @@ local function CE_BuildPlannerRows(scrollChild, parentFrame, items)
         row.amountInput:ClearAllPoints()
         row.amountInput:SetPoint("RIGHT", row, "RIGHT", 8, 0)
 
-        row.excludedLabel:ClearAllPoints()
-        row.excludedLabel:SetPoint("RIGHT", row.amountInput, "LEFT", -40, 0)
-        row.excludedLabel:SetText("Excluded")
-
-        row.excludedBox:ClearAllPoints()
-        row.excludedBox:SetPoint("RIGHT", row.excludedLabel, "LEFT", -4, 0)
-
-        row.excludedHit:ClearAllPoints()
-        row.excludedHit:SetPoint("TOPLEFT", row.excludedLabel, "TOPLEFT", 0, 0)
-        row.excludedHit:SetPoint("BOTTOMRIGHT", row.excludedLabel, "BOTTOMRIGHT", 0, 0)
-
         row.optionalLabel:ClearAllPoints()
-        row.optionalLabel:SetPoint("RIGHT", row.excludedBox, "LEFT", -22, 0)
+        row.optionalLabel:SetPoint("RIGHT", row.amountInput, "LEFT", -40, 0)
         row.optionalLabel:SetText("Optional")
 
         row.optionalBox:ClearAllPoints()
