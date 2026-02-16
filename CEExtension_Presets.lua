@@ -2,85 +2,6 @@
 
 CE_TooltipAllowed = CE_TooltipAllowed or {}
 
-local CE_CachedNameToId = nil
-local CE_CachedLowerNameToId = nil
-
-local function CE_GetNameLookups()
-    local nameToId = consumablesNameToID or {}
-    if CE_CachedNameToId ~= nameToId then
-        CE_CachedNameToId = nameToId
-        CE_CachedLowerNameToId = {}
-        for itemName, itemId in pairs(nameToId) do
-            CE_CachedLowerNameToId[string.lower(itemName)] = itemId
-        end
-    end
-    return nameToId, CE_CachedLowerNameToId or {}
-end
-
-local function CE_AppendEntries(target, entries)
-    if type(target) ~= "table" or type(entries) ~= "table" then
-        return
-    end
-    local i = 1
-    while entries[i] do
-        table.insert(target, entries[i])
-        i = i + 1
-    end
-end
-
-local function CE_GetSpecGroups(data, selectedClass)
-    if not data or type(data.SpecMandatory) ~= "table" then
-        return nil
-    end
-    if not selectedClass or selectedClass == "" then
-        return nil
-    end
-    local selectedLower = string.lower(selectedClass)
-    for specLabel, entries in pairs(data.SpecMandatory) do
-        if string.lower(specLabel) == selectedLower then
-            return entries
-        end
-    end
-    return nil
-end
-
-local function CE_GetRoleEntries(data, role, specGroups)
-    if not role or not data or type(data.RoleMandatory) ~= "table" then
-        return nil
-    end
-    local roleEntries = data.RoleMandatory[role]
-    if type(roleEntries) ~= "table" then
-        return nil
-    end
-    if role == "caster" and type(specGroups) == "table" and table.getn(specGroups) > 0 then
-        local merged = {}
-        CE_AppendEntries(merged, roleEntries)
-        CE_AppendEntries(merged, specGroups)
-        return merged
-    end
-    return roleEntries
-end
-
-local function CE_BuildGroups(data, role, specGroups, selectedClass)
-    local groups = {}
-    if data.MandatoryGroups and type(data.MandatoryGroups) == "table" and table.getn(data.MandatoryGroups) > 0 then
-        table.insert(groups, { label = "Mandatory", entries = data.MandatoryGroups })
-    end
-
-    local roleEntries = CE_GetRoleEntries(data, role, specGroups)
-    if roleEntries then
-        table.insert(groups, { label = "Role: " .. role, entries = roleEntries })
-    elseif type(specGroups) == "table" and table.getn(specGroups) > 0 and selectedClass and selectedClass ~= "" then
-        table.insert(groups, { label = "Spec: " .. selectedClass, entries = specGroups })
-    end
-
-    if data.OptionalGroups and type(data.OptionalGroups) == "table" and table.getn(data.OptionalGroups) > 0 then
-        table.insert(groups, { label = "Optional", entries = data.OptionalGroups })
-    end
-
-    return groups
-end
-
 local function CE_ClearPresets(parentFrame)
     if not parentFrame then
         return
@@ -107,75 +28,6 @@ local function CE_ClearPresets(parentFrame)
     if parentFrame.noItemsMessage then
         parentFrame.noItemsMessage:Hide()
     end
-end
-
-function CE_LogRoleInfo()
-    if not ConsumesManager_Options.showColdEmbrace then
-        return
-    end
-
-    local roleModule = RaidConsumables and RaidConsumables.Role
-    if not roleModule or type(roleModule.Detect) ~= "function" then
-        return
-    end
-
-    local role, info = roleModule.Detect()
-    local classTag = info and info.class or "unknown"
-    local tabIndex = info and info.primaryTab or 0
-    local tabName = (info and info.tabs and info.tabs[tabIndex]) or "unknown"
-
-    if DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage then
-        DEFAULT_CHAT_FRAME:AddMessage(string.format("CE: class=%s, primaryTab=%s, role=%s", classTag, tabName, role or "unknown"))
-    end
-end
-
-function CE_InferRoleFromSelectedClass()
-    local selected = ConsumesManager_SelectedClass
-    if not selected or selected == "" then
-        return nil
-    end
-
-    local name = string.lower(selected)
-
-    if string.find(name, "tank", 1, true) or string.find(name, "protection", 1, true) then
-        return "tank"
-    end
-    if string.find(name, "healer", 1, true) or string.find(name, "holy", 1, true) or string.find(name, "restoration", 1, true) or string.find(name, "discipline", 1, true) then
-        return "healer"
-    end
-    if string.find(name, "ranged", 1, true) or string.find(name, "hunter", 1, true) then
-        return "ranged"
-    end
-    if string.find(name, "mage", 1, true) or string.find(name, "warlock", 1, true) or string.find(name, "shadow priest", 1, true) or string.find(name, "elemental", 1, true) or string.find(name, "moonkin", 1, true) or string.find(name, "balance", 1, true) then
-        return "caster"
-    end
-    if string.find(name, "rogue", 1, true) or string.find(name, "warrior", 1, true) or string.find(name, "enhancement", 1, true) or string.find(name, "cat", 1, true) or string.find(name, "melee", 1, true) or string.find(name, "fury", 1, true) or string.find(name, "retribution", 1, true) or string.find(name, "feral", 1, true) then
-        return "melee"
-    end
-
-    return nil
-end
-
-local function CE_BuildGroupItems(entries, getItemIdByName, getTotalCount, getGroupEntry)
-    local items = {}
-    if entries and type(entries) == "table" then
-        for j = 1, table.getn(entries) do
-            local entry = entries[j]
-            local names, required = getGroupEntry(entry)
-            for k = 1, table.getn(names) do
-                local itemName = names[k]
-                local itemId = getItemIdByName(itemName)
-                local totalCount = itemId and getTotalCount(itemId) or 0
-                table.insert(items, {
-                    id = itemId,
-                    name = itemName,
-                    required = required,
-                    totalCount = totalCount
-                })
-            end
-        end
-    end
-    return items
 end
 
 local function CE_AddGroupHeader(scrollChild, index, lineHeight, labelText, parentFrame, groupKey, isCollapsed, statusColor, requiredTotal, ownedTotal, mode)
@@ -256,7 +108,9 @@ local function CE_AddItemRow(scrollChild, index, lineHeight, item, showUseButton
             if bag and slot then
                 UseContainerItem(bag, slot)
             else
-                DEFAULT_CHAT_FRAME:AddMessage("Item not found in bags.")
+                if DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage then
+                    DEFAULT_CHAT_FRAME:AddMessage("Item not found in bags.")
+                end
             end
         end)
     end
@@ -267,11 +121,12 @@ local function CE_AddItemRow(scrollChild, index, lineHeight, item, showUseButton
     else
         label:SetPoint("LEFT", frame, "LEFT", 0, 0)
     end
+
     local mode = ConsumesManager_Options and ConsumesManager_Options.ceConfigMode or "requiredmode"
     if mode == "ownedmode" then
-        label:SetText(item.name .. " (" .. item.totalCount .. "/" .. item.required .. ")")
+        label:SetText((item.name or "") .. " (" .. (item.totalCount or 0) .. "/" .. (item.required or 0) .. ")")
     else
-        label:SetText(item.name .. " (" .. item.required .. "/" .. item.totalCount .. ")")
+        label:SetText((item.name or "") .. " (" .. (item.required or 0) .. "/" .. (item.totalCount or 0) .. ")")
     end
     label:SetJustifyH("LEFT")
 
@@ -297,8 +152,8 @@ local function CE_AddItemRow(scrollChild, index, lineHeight, item, showUseButton
     end
 
     if useButton then
-        local playerInventory = (ConsumesManager_Data[realmName] and ConsumesManager_Data[realmName][playerName] and ConsumesManager_Data[realmName][playerName].inventory) or {}
-        local countInInventory = playerInventory[item.id] or 0
+        local playerInventory = (ConsumesManager_Data and ConsumesManager_Data[realmName] and ConsumesManager_Data[realmName][playerName] and ConsumesManager_Data[realmName][playerName].inventory) or {}
+        local countInInventory = (item.id and playerInventory[item.id]) or 0
         if countInInventory > 0 then
             useButton:Enable()
         else
@@ -330,8 +185,7 @@ function CE_UpdatePresetsConsumables()
     CE_ClearPresets(parentFrame)
     CE_TooltipAllowed = {}
 
-    local raidName = CE_NormalizeRaidName and CE_NormalizeRaidName(ConsumesManager_SelectedRaid) or (ConsumesManager_SelectedRaid or "Naxxramas")
-
+    local raidName = (type(CE_NormalizeRaidName) == "function" and CE_NormalizeRaidName(ConsumesManager_SelectedRaid)) or (ConsumesManager_SelectedRaid or "Naxxramas")
     local selectedClass = ConsumesManager_SelectedClass
     if type(selectedClass) ~= "string" or selectedClass == "" then
         parentFrame.messageLabel:SetText("|cffff0000Select a class in the Presets tab.|r")
@@ -341,20 +195,7 @@ function CE_UpdatePresetsConsumables()
         return
     end
 
-    local preset = nil
-    if type(CE_EnsurePresetTabDefaults) == "function" then
-        local store = CE_EnsurePresetTabDefaults()
-        local presets = store and store[selectedClass]
-        if type(presets) == "table" then
-            for i = 1, table.getn(presets) do
-                local p = presets[i]
-                if p and p.raid == raidName then
-                    preset = p
-                    break
-                end
-            end
-        end
-    end
+    local preset = (type(CE_GetPresetEntry) == "function" and CE_GetPresetEntry(selectedClass, raidName)) or nil
 
     if type(preset) ~= "table" or type(preset.id) ~= "table" then
         parentFrame.messageLabel:SetText("|cffff0000No CE preset found for this class/raid.|r")
@@ -365,6 +206,21 @@ function CE_UpdatePresetsConsumables()
     end
 
     parentFrame.messageLabel:Hide()
+
+    -- Build an id->name map once per refresh (stable, bounded, no long-lived cache).
+    local idToName = {}
+    if type(consumablesCategories) == "table" then
+        for _, items in pairs(consumablesCategories) do
+            if type(items) == "table" then
+                for i = 1, table.getn(items) do
+                    local it = items[i]
+                    if it and type(it.id) == "number" and type(it.name) == "string" and it.name ~= "" then
+                        idToName[it.id] = it.name
+                    end
+                end
+            end
+        end
+    end
 
     local realmName = GetRealmName()
     local playerName = UnitName("player")
@@ -412,7 +268,7 @@ function CE_UpdatePresetsConsumables()
                 if entryStatus == status then
                     local required = entry and tonumber(entry.amount) or 0
                     if required < 0 then required = 0 end
-                    local name = (type(CE_GetConsumableNameById) == "function" and CE_GetConsumableNameById(itemId)) or ("Item " .. tostring(itemId))
+                    local name = idToName[itemId] or ("Item " .. tostring(itemId))
                     local totalCount = CE_GetTotalCount(itemId)
                     table.insert(items, { id = itemId, name = name, required = required, totalCount = totalCount })
                 end
@@ -461,7 +317,7 @@ function CE_UpdatePresetsConsumables()
         return requiredTotal, ownedTotal
     end
 
-    local function CE_IsPreparedPlanner(mandatoryItems)
+    local function CE_IsPrepared(mandatoryItems)
         for i = 1, table.getn(mandatoryItems) do
             local item = mandatoryItems[i]
             if item and item.required and item.required > 0 and item.totalCount < item.required then
@@ -480,7 +336,7 @@ function CE_UpdatePresetsConsumables()
     local optionalItems = CE_BuildPresetItemsForStatus("optional")
 
     if table.getn(mandatoryItems) > 0 or table.getn(optionalItems) > 0 then
-        local prepared = CE_IsPreparedPlanner(mandatoryItems)
+        local prepared = CE_IsPrepared(mandatoryItems)
         index = index + 1
         local statusFrame = CreateFrame("Frame", "ConsumesManager_CEStatusFrame" .. index, scrollChild)
         statusFrame:SetWidth(scrollChild:GetWidth() - 10)
@@ -511,6 +367,7 @@ function CE_UpdatePresetsConsumables()
         if table.getn(items) == 0 then
             return
         end
+
         local groupKey = (raidName or "") .. "|" .. (label or "") .. "|" .. tostring(groupIndex)
         local statusColor = CE_GetGroupStatus(items)
         local requiredTotal, ownedTotal = CE_GetGroupTotals(items)
@@ -518,6 +375,7 @@ function CE_UpdatePresetsConsumables()
         local mode = ConsumesManager_Options and ConsumesManager_Options.ceConfigMode or "requiredmode"
         index = CE_AddGroupHeader(scrollChild, index + 1, lineHeight, label, parentFrame, groupKey, isCollapsed, statusColor, requiredTotal, ownedTotal, mode)
         hasAnyVisibleItems = true
+
         if not isCollapsed then
             for j = 1, table.getn(items) do
                 local item = items[j]
@@ -544,7 +402,9 @@ function CE_UpdatePresetsConsumables()
     end
 
     scrollChild:SetHeight(index * lineHeight + 40)
-    ConsumesManager_UpdatePresetsScrollBar()
+    if type(ConsumesManager_UpdatePresetsScrollBar) == "function" then
+        ConsumesManager_UpdatePresetsScrollBar()
+    end
 
     if not hasAnyVisibleItems then
         parentFrame.noItemsMessage = parentFrame.messageLabel

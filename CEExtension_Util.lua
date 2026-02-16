@@ -612,36 +612,50 @@ end
 
 local function CE_GetOrCreatePresetEntry(className, raidName)
     raidName = CE_NormalizeRaidName(raidName)
+    local existing = CE_GetPresetEntry(className, raidName)
+    if existing then
+        existing.id = type(existing.id) == "table" and existing.id or {}
+        existing.req = type(existing.req) == "table" and existing.req or {}
+        return existing
+    end
+
     local store = CE_EnsurePresetTabDefaults()
     store[className] = store[className] or {}
     local presets = store[className]
-    for i = 1, table.getn(presets) do
-        local p = presets[i]
-        if p and p.raid == raidName then
-            p.id = type(p.id) == "table" and p.id or {}
-            p.req = type(p.req) == "table" and p.req or {}
-            return p
-        end
-    end
     local created = { raid = raidName, id = {}, req = {} }
     table.insert(presets, created)
     return created
 end
 
-function CE_GetPresetIdsFor(className, raidName)
-    className = type(className) == "string" and className or ""
+-- Read-only preset entry lookup. Returns the preset entry table or nil.
+-- Does NOT create missing entries.
+function CE_GetPresetEntry(className, raidName)
+    if type(className) ~= "string" or className == "" then
+        return nil
+    end
     raidName = CE_NormalizeRaidName(raidName)
-    local store = CE_EnsurePresetTabDefaults()
 
-    local presets = store[className]
+    local store = CE_EnsurePresetTabDefaults()
+    local presets = store and store[className]
     if type(presets) ~= "table" then
         return nil
     end
+
     for i = 1, table.getn(presets) do
         local p = presets[i]
-        if p and p.raid == raidName and type(p.id) == "table" then
-            return p.id
+        if p and p.raid == raidName then
+            return p
         end
+    end
+    return nil
+end
+
+function CE_GetPresetIdsFor(className, raidName)
+    className = type(className) == "string" and className or ""
+    raidName = CE_NormalizeRaidName(raidName)
+    local entry = CE_GetPresetEntry(className, raidName)
+    if entry and type(entry.id) == "table" then
+        return entry.id
     end
     return nil
 end

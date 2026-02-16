@@ -47,26 +47,38 @@ local function CE_GetPlannerItems(raidName)
     local results = {}
     local seen = {}
 
+    -- Build a local id->name lookup once (stable + no long-lived cache).
+    local idToName = {}
+    if type(consumablesCategories) == "table" then
+        for _, items in pairs(consumablesCategories) do
+            if type(items) == "table" then
+                for i = 1, table.getn(items) do
+                    local it = items[i]
+                    if it and type(it.id) == "number" and type(it.name) == "string" and it.name ~= "" then
+                        idToName[it.id] = it.name
+                    end
+                end
+            end
+        end
+    end
+
+    local function getName(itemId)
+        return idToName[itemId] or ""
+    end
+
     -- Include any items present in requirements metadata for this (class, raid)
     -- so they show up in the planner even if not currently selected in `id`.
-    if selectedClass ~= "" and type(CE_GetPresetTabStore) == "function" and type(CE_EnsurePresetTabDefaults) == "function" then
-        local store = CE_EnsurePresetTabDefaults()
-        local presets = store and store[selectedClass]
-        if type(presets) == "table" then
-            for pi = 1, table.getn(presets) do
-                local p = presets[pi]
-                if p and p.raid == raidName and type(p.req) == "table" then
-                    for itemId in pairs(p.req) do
-                        if type(itemId) == "number" and not seen[itemId] then
-                            local name = (type(CE_GetConsumableNameById) == "function" and CE_GetConsumableNameById(itemId)) or ""
-                            if name == "" then
-                                name = tostring(itemId)
-                            end
-                            table.insert(results, { id = itemId, name = name })
-                            seen[itemId] = true
-                        end
+    if selectedClass ~= "" and type(CE_GetPresetEntry) == "function" then
+        local entry = CE_GetPresetEntry(selectedClass, raidName)
+        if entry and type(entry.req) == "table" then
+            for itemId in pairs(entry.req) do
+                if type(itemId) == "number" and not seen[itemId] then
+                    local name = getName(itemId)
+                    if name == "" then
+                        name = tostring(itemId)
                     end
-                    break
+                    table.insert(results, { id = itemId, name = name })
+                    seen[itemId] = true
                 end
             end
         end
@@ -79,7 +91,7 @@ local function CE_GetPlannerItems(raidName)
             for i = 1, table.getn(ids) do
                 local itemId = ids[i]
                 if type(itemId) == "number" and not seen[itemId] then
-                    local name = (type(CE_GetConsumableNameById) == "function" and CE_GetConsumableNameById(itemId)) or ""
+                    local name = getName(itemId)
                     if name == "" then
                         name = tostring(itemId)
                     end
@@ -181,17 +193,10 @@ local function CE_BuildPlannerRows(scrollChild, parentFrame, items)
 
     -- Load requirements metadata for this preset.
     local reqById = {}
-    if selectedClass ~= "" and type(CE_EnsurePresetTabDefaults) == "function" then
-        local store = CE_EnsurePresetTabDefaults()
-        local presets = store and store[selectedClass]
-        if type(presets) == "table" then
-            for pi = 1, table.getn(presets) do
-                local p = presets[pi]
-                if p and p.raid == raidName and type(p.req) == "table" then
-                    reqById = p.req
-                    break
-                end
-            end
+    if selectedClass ~= "" and type(CE_GetPresetEntry) == "function" then
+        local entry = CE_GetPresetEntry(selectedClass, raidName)
+        if entry and type(entry.req) == "table" then
+            reqById = entry.req
         end
     end
 
@@ -365,9 +370,14 @@ local function CE_BuildPlannerRows(scrollChild, parentFrame, items)
                 end
             end)
 
-            row.amountInput:SetScript("OnTextChanged", function()
-                if row.SaveState then
-                    row.SaveState()
+            -- Saving on every keypress causes lots of refresh churn.
+            -- Save amount when the user finishes editing (focus lost / Enter).
+            row.amountInput:SetScript("OnEnterPressed", function()
+                row.amountInput:ClearFocus()
+            end)
+            row.amountInput:SetScript("OnEditFocusLost", function()
+                if row.SaveAmount then
+                    row.SaveAmount()
                 end
             end)
 
@@ -416,13 +426,32 @@ local function CE_BuildPlannerRows(scrollChild, parentFrame, items)
             end
             local isEnabled = row.checkbox:GetChecked() == 1
             CE_TogglePresetItem(selectedClass, raidName, itemId, isEnabled)
+            local status = (row.optionalBox and row.optionalBox.GetChecked and row.optionalBox:GetChecked() == 1) and "optional" or "mandatory"
+            if type(CE_SetPresetReqFor) == "function" then
+                -- Preserve amount here; amount is saved separately on focus-loss.
+                CE_SetPresetReqFor(selectedClass, raidName, itemId, nil, status)
+            end
+            if type(ConsumesManager_UpdatePresetsConsumables) == "function" then
+                ConsumesManager_UpdatePresetsConsumables()
+            end
+        end
+
+        row.SaveAmount = function()
+            if row._applyingState then
+                return
+            end
+            if selectedClass == "" or type(CE_SetPresetReqFor) ~= "function" then
+                return
+            end
+
+            local itemId = tonumber(row.itemId)
+            if not itemId then
+                return
+            end
 
             local amountText = row.amountInput and row.amountInput.GetText and row.amountInput:GetText() or "0"
             local amount = tonumber(amountText) or 0
-            local status = (row.optionalBox and row.optionalBox.GetChecked and row.optionalBox:GetChecked() == 1) and "optional" or "mandatory"
-            if type(CE_SetPresetReqFor) == "function" then
-                CE_SetPresetReqFor(selectedClass, raidName, itemId, amount, status)
-            end
+            CE_SetPresetReqFor(selectedClass, raidName, itemId, amount, nil)
             if type(ConsumesManager_UpdatePresetsConsumables) == "function" then
                 ConsumesManager_UpdatePresetsConsumables()
             end
