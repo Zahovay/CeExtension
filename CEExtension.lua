@@ -11,6 +11,7 @@ local orig_UpdatePresetsConsumables = ConsumesManager_UpdatePresetsConsumables
 if type(orig_UpdatePresetsConsumables) == "function" then
     function ConsumesManager_UpdatePresetsConsumables()
         if ConsumesManager_Options.showColdEmbrace then
+            -- In CE mode, render Presets with owned/required counts.
             if type(CE_UpdatePresetsConsumables) == "function" then
                 CE_UpdatePresetsConsumables()
             else
@@ -101,6 +102,33 @@ if type(orig_ShowConsumableTooltip) == "function" then
             return
         end
         orig_ShowConsumableTooltip(itemID)
+    end
+end
+
+local orig_IsItemInPresets = ConsumesManager_IsItemInPresets
+if type(orig_IsItemInPresets) == "function" then
+    function ConsumesManager_IsItemInPresets(itemID)
+        if ConsumesManager_Options.showColdEmbrace and type(CE_EnsurePresetTabDefaults) == "function" then
+            local store = CE_EnsurePresetTabDefaults()
+            if type(store) == "table" then
+                for _, presets in pairs(store) do
+                    if type(presets) == "table" then
+                        for i = 1, table.getn(presets) do
+                            local preset = presets[i]
+                            if preset and type(preset.id) == "table" then
+                                for j = 1, table.getn(preset.id) do
+                                    if preset.id[j] == itemID then
+                                        return true
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+                return false
+            end
+        end
+        return orig_IsItemInPresets(itemID)
     end
 end
 

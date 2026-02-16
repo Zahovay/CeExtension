@@ -36,10 +36,61 @@ local function CE_SetTabButtonState(button, isActive)
     end
 end
 
-local function CE_GetPlannerPotionItems()
+local function CE_GetPlannerItems(raidName)
+    raidName = CE_NormalizeRaidName and CE_NormalizeRaidName(raidName) or (raidName or "Naxxramas")
+
+    local selectedClass = ConsumesManager_SelectedClass
+    if type(selectedClass) ~= "string" then
+        selectedClass = ""
+    end
+
     local results = {}
     local seen = {}
 
+    -- Include any items present in requirements metadata for this (class, raid)
+    -- so they show up in the planner even if not currently selected in `id`.
+    if selectedClass ~= "" and type(CE_GetPresetTabStore) == "function" and type(CE_EnsurePresetTabDefaults) == "function" then
+        local store = CE_EnsurePresetTabDefaults()
+        local presets = store and store[selectedClass]
+        if type(presets) == "table" then
+            for pi = 1, table.getn(presets) do
+                local p = presets[pi]
+                if p and p.raid == raidName and type(p.req) == "table" then
+                    for itemId in pairs(p.req) do
+                        if type(itemId) == "number" and not seen[itemId] then
+                            local name = (type(CE_GetConsumableNameById) == "function" and CE_GetConsumableNameById(itemId)) or ""
+                            if name == "" then
+                                name = tostring(itemId)
+                            end
+                            table.insert(results, { id = itemId, name = name })
+                            seen[itemId] = true
+                        end
+                    end
+                    break
+                end
+            end
+        end
+    end
+
+    -- Always include any items already in the Presets-tab data for this (class, raid).
+    if selectedClass ~= "" and type(CE_GetPresetIdsFor) == "function" then
+        local ids = CE_GetPresetIdsFor(selectedClass, raidName)
+        if type(ids) == "table" then
+            for i = 1, table.getn(ids) do
+                local itemId = ids[i]
+                if type(itemId) == "number" and not seen[itemId] then
+                    local name = (type(CE_GetConsumableNameById) == "function" and CE_GetConsumableNameById(itemId)) or ""
+                    if name == "" then
+                        name = tostring(itemId)
+                    end
+                    table.insert(results, { id = itemId, name = name })
+                    seen[itemId] = true
+                end
+            end
+        end
+    end
+
+    -- Also include potion-like items so users can add extras easily.
     if type(consumablesCategories) == "table" then
         for categoryName, items in pairs(consumablesCategories) do
             local categoryLower = type(categoryName) == "string" and string.lower(categoryName) or ""
@@ -53,21 +104,6 @@ local function CE_GetPlannerPotionItems()
                         table.insert(results, { id = item.id, name = item.name or "" })
                         seen[item.id] = true
                     end
-                end
-            end
-        end
-    end
-
-    if table.getn(results) == 0 and type(consumablesNameToID) == "table" then
-        for itemName, itemId in pairs(consumablesNameToID) do
-            if type(itemName) == "string" then
-                local nameLower = string.lower(itemName)
-                local isPotionItem = string.find(nameLower, "potion", 1, true) ~= nil
-                    or string.find(nameLower, "elixir", 1, true) ~= nil
-                    or string.find(nameLower, "flask", 1, true) ~= nil
-                if isPotionItem and not seen[itemId] then
-                    table.insert(results, { id = itemId, name = itemName })
-                    seen[itemId] = true
                 end
             end
         end
@@ -87,8 +123,27 @@ local function CE_BuildPlannerRows(scrollChild, parentFrame, items)
 
     parentFrame.plannerRows = parentFrame.plannerRows or {}
 
+    local selectedClass = ConsumesManager_SelectedClass
+    if type(selectedClass) ~= "string" then
+        selectedClass = ""
+    end
+
     local lineHeight = 24
     local count = table.getn(items)
+    if selectedClass == "" then
+        local emptyLabel = parentFrame.plannerEmptyLabel
+        if not emptyLabel then
+            emptyLabel = parentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            parentFrame.plannerEmptyLabel = emptyLabel
+        end
+        emptyLabel:SetPoint("TOPLEFT", parentFrame, "TOPLEFT", 10, -10)
+        emptyLabel:SetText("Select a Class in the Presets tab first.")
+        emptyLabel:SetJustifyH("LEFT")
+        emptyLabel:Show()
+        scrollChild:SetHeight(lineHeight)
+        return
+    end
+
     if count == 0 then
         local emptyLabel = parentFrame.plannerEmptyLabel
         if not emptyLabel then
@@ -96,7 +151,7 @@ local function CE_BuildPlannerRows(scrollChild, parentFrame, items)
             parentFrame.plannerEmptyLabel = emptyLabel
         end
         emptyLabel:SetPoint("TOPLEFT", parentFrame, "TOPLEFT", 10, -10)
-        emptyLabel:SetText("No potions found.")
+        emptyLabel:SetText("No preset items found for this raid.")
         emptyLabel:SetJustifyH("LEFT")
         emptyLabel:Show()
         scrollChild:SetHeight(lineHeight)
@@ -107,8 +162,38 @@ local function CE_BuildPlannerRows(scrollChild, parentFrame, items)
         parentFrame.plannerEmptyLabel:Hide()
     end
 
-    local tabName = parentFrame.plannerTabName or "Tab"
+    local raidName = parentFrame.plannerTabName or "Naxxramas"
+    local tabName = raidName
     tabName = string.gsub(tabName, "%s+", "")
+
+    local presetSet = {}
+    if selectedClass ~= "" and type(CE_GetPresetIdsFor) == "function" then
+        local ids = CE_GetPresetIdsFor(selectedClass, raidName)
+        if type(ids) == "table" then
+            for i = 1, table.getn(ids) do
+                local itemId = ids[i]
+                if type(itemId) == "number" then
+                    presetSet[itemId] = true
+                end
+            end
+        end
+    end
+
+    -- Load requirements metadata for this preset.
+    local reqById = {}
+    if selectedClass ~= "" and type(CE_EnsurePresetTabDefaults) == "function" then
+        local store = CE_EnsurePresetTabDefaults()
+        local presets = store and store[selectedClass]
+        if type(presets) == "table" then
+            for pi = 1, table.getn(presets) do
+                local p = presets[pi]
+                if p and p.raid == raidName and type(p.req) == "table" then
+                    reqById = p.req
+                    break
+                end
+            end
+        end
+    end
 
     for i = 1, count do
         local item = items[i]
@@ -187,14 +272,19 @@ local function CE_BuildPlannerRows(scrollChild, parentFrame, items)
                 end
             end
 
-            row.mandatoryBox:SetScript("OnClick", function()
-                row.SetStatus(row.mandatoryBox:GetChecked() and row.mandatoryBox or nil)
-            end)
             row.optionalBox:SetScript("OnClick", function()
                 row.SetStatus(row.optionalBox:GetChecked() and row.optionalBox or nil)
+                if row.SaveState then
+                    row.SaveState()
+                end
             end)
 
-            row.SetStatus(row.mandatoryBox)
+            row.mandatoryBox:SetScript("OnClick", function()
+                row.SetStatus(row.mandatoryBox:GetChecked() and row.mandatoryBox or nil)
+                if row.SaveState then
+                    row.SaveState()
+                end
+            end)
 
             row.UpdateEnabled = function()
                 local enabled = row.checkbox:GetChecked() == 1
@@ -243,24 +333,99 @@ local function CE_BuildPlannerRows(scrollChild, parentFrame, items)
 
             row.checkbox:SetScript("OnClick", function()
                 row.UpdateEnabled()
+                if row.SaveState then
+                    row.SaveState()
+                end
             end)
             row.labelHit:SetScript("OnClick", function()
                 row.checkbox:SetChecked(not row.checkbox:GetChecked())
                 row.UpdateEnabled()
+                if row.SaveState then
+                    row.SaveState()
+                end
             end)
             row:SetScript("OnMouseDown", function()
                 row.checkbox:SetChecked(not row.checkbox:GetChecked())
                 row.UpdateEnabled()
+                if row.SaveState then
+                    row.SaveState()
+                end
             end)
 
             row.mandatoryHit:SetScript("OnClick", function()
                 row.SetStatus(row.mandatoryBox:GetChecked() and nil or row.mandatoryBox)
+                if row.SaveState then
+                    row.SaveState()
+                end
             end)
             row.optionalHit:SetScript("OnClick", function()
                 row.SetStatus(row.optionalBox:GetChecked() and nil or row.optionalBox)
+                if row.SaveState then
+                    row.SaveState()
+                end
+            end)
+
+            row.amountInput:SetScript("OnTextChanged", function()
+                if row.SaveState then
+                    row.SaveState()
+                end
             end)
 
             parentFrame.plannerRows[i] = row
+        end
+
+        -- Ensure row reflects stored state (and persists changes back).
+        row.itemId = item and item.id or nil
+        row._applyingState = true
+        local enabled = row.itemId and presetSet[row.itemId] and true or false
+        row.checkbox:SetChecked(enabled and 1 or 0)
+
+        -- Restore amount/status controls; values come from requirements metadata.
+        if row.amountInput then row.amountInput:Show() end
+        if row.optionalBox then row.optionalBox:Show() end
+        if row.optionalLabel then row.optionalLabel:Show() end
+        if row.optionalHit then row.optionalHit:Show() end
+        if row.mandatoryBox then row.mandatoryBox:Show() end
+        if row.mandatoryLabel then row.mandatoryLabel:Show() end
+        if row.mandatoryHit then row.mandatoryHit:Show() end
+
+        local req = row.itemId and reqById and reqById[row.itemId] or nil
+        local amt = req and tonumber(req.amount) or 0
+        if row.amountInput and row.amountInput.SetText then
+            row.amountInput:SetText(tostring(amt))
+        end
+        local status = req and req.status or "mandatory"
+        if status == "optional" then
+            row.SetStatus(row.optionalBox)
+        else
+            row.SetStatus(row.mandatoryBox)
+        end
+        row._applyingState = false
+
+        row.SaveState = function()
+            if row._applyingState then
+                return
+            end
+            if selectedClass == "" or type(CE_TogglePresetItem) ~= "function" then
+                return
+            end
+
+            local itemId = tonumber(row.itemId)
+            if not itemId then
+                return
+            end
+            local isEnabled = row.checkbox:GetChecked() == 1
+            CE_TogglePresetItem(selectedClass, raidName, itemId, isEnabled)
+
+            local amountText = row.amountInput and row.amountInput.GetText and row.amountInput:GetText() or "0"
+            local amount = tonumber(amountText) or 0
+            local status = (row.optionalBox and row.optionalBox.GetChecked and row.optionalBox:GetChecked() == 1) and "optional" or "mandatory"
+            if type(CE_SetPresetReqFor) == "function" then
+                CE_SetPresetReqFor(selectedClass, raidName, itemId, amount, status)
+            end
+            if type(ConsumesManager_UpdatePresetsConsumables) == "function" then
+                ConsumesManager_UpdatePresetsConsumables()
+            end
         end
 
         row:ClearAllPoints()
@@ -401,7 +566,7 @@ CE_UpdatePlannerList = function(parentFrame)
     if parentFrame.plannerScrollChild and width > 0 then
         parentFrame.plannerScrollChild:SetWidth(width - 40)
     end
-    local items = CE_GetPlannerPotionItems()
+    local items = CE_GetPlannerItems(parentFrame.plannerTabName)
     CE_BuildPlannerRows(parentFrame.plannerScrollChild, parentFrame, items)
 
     local scrollFrame = parentFrame.plannerScrollFrame
@@ -589,6 +754,7 @@ local function CE_BuildPresetTabs(frame)
     tabLineRight:SetVertexColor(0.4, 0.4, 0.4, 1)
 
     for i = 1, count do
+        local raidName = raids[i]
         local content = CreateFrame("Frame", nil, frame)
         content:SetPoint("TOPLEFT", frame, "TOPLEFT", 20, -90)
         content:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -20, 40)
