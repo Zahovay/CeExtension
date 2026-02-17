@@ -12,6 +12,10 @@ Cold Embrace extension for [ConsumesManager](https://github.com/Cinecom/Consumes
 - Collapsible CE groups with status coloring and completion totals.
 - CE tab with extension settings and configuration.
 - Raid consumables Planner window with per-raid tabs, class/talent selector, search, “Selected only” filter, and copy-from-raid.
+- Buy tab: shows only missing (unfulfilled) preset consumables for the selected class/raid.
+- One-click search from Buy tab:
+   - If aux is open: searches the item in aux (exact search).
+   - Otherwise: falls back to Blizzard Auction House search (only when the AH is open).
 - Non-destructive: base addon remains intact and CE changes are removed when disabled (CE tab remains visible).
 
 ## Requirements
@@ -38,26 +42,15 @@ See [LICENSE](LICENSE).
 1. Open [ConsumesManager](https://github.com/Cinecom/ConsumesManager?tab=readme-ov-file#) in-game.
 2. Go to the CE tab.
 3. Check "Enable Cold Embrace extension".
-4. Open the Presets tab and select a class/talent.
-5. CE groups and requirements will appear.
-
-Planner:
-- CE tab -> click "Raid consumables Planner".
-- Use the Class/Talent dropdown inside the planner to edit other presets.
-- Use Search and “Selected only” to quickly find and review selected consumables.
-
-Auto-select behavior:
-- When "Auto-select class/talents on open" is enabled, opening the main window or the planner will auto-detect your current class/spec and switch the class selector.
-- Disable it to keep your previously selected class/talents when opening windows.
-
-Optional configuration:
-- In the CE tab, choose Required/Owned or Owned/Required to control the order shown in Presets.
 
 <p>
    <img src="images/settings.png" alt="CE Settings">
    <br>
    <em>Enable the extension in the CE tab.</em>
 </p>
+
+4. Open the Presets tab and select a class/talent.
+5. CE groups and requirements will appear.
 
 <table>
    <tr>
@@ -75,11 +68,37 @@ Optional configuration:
    </tr>
 </table>
 
+
+Buy tab:
+- Select Raid + Class (same selection as Presets).
+- The list contains only items where Required > 0 and Owned < Required.
+- Click “Search” (or right-click the row):
+   - With aux open: performs an exact aux search.
+   - Without aux: searches in the Blizzard AH UI if the Auction House is open.
+
 <p>
-    <img src="images/planner.png" alt="Raid consumables Planner">
-    <br>
-    <em>Use the Planner to manage per-raid presets with search, selected-only, and copy-from.</em>
+   <img src="images/aux_integration.png" alt="Buy tab - aux integration">
+   <br>
+   <em>Buy tab search supports aux (when open) and Blizzard AH fallback.</em>
 </p>
+
+Planner:
+- CE tab -> click "Raid consumables Planner".
+- Use the Class/Talent dropdown inside the planner to edit other presets.
+- Use Search and “Selected only” to quickly find and review selected consumables.
+
+<p>
+   <img src="images/planner.png" alt="Raid consumables Planner">
+   <br>
+   <em>Use the Planner to manage per-raid presets with search, selected-only, and copy-from.</em>
+</p>
+
+Auto-select behavior:
+- When "Auto-select class/talents on open" is enabled, opening the main window or the planner will auto-detect your current class/spec and switch the class selector.
+- Disable it to keep your previously selected class/talents when opening windows.
+
+Optional configuration:
+- In the CE tab, choose Required/Owned or Owned/Required to control the order shown in Presets.
 
 ## How to Switch On/Off
 - On: CE tab -> check "Enable Cold Embrace extension".

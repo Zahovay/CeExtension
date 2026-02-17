@@ -1,5 +1,157 @@
 -- CE utility helpers
 
+CE_CachedAuxModule = CE_CachedAuxModule or nil
+local CE_LastAuxWarnAt = 0
+
+function CE_AuxTryUseItem(itemId, itemName)
+    if type(itemId) ~= "number" then
+        return false
+    end
+
+    local function CE_ShowAuxWarning(text)
+        if type(text) ~= "string" or text == "" then
+            return
+        end
+
+        -- Rate-limit warnings to avoid spam/perf issues.
+        if type(GetTime) == "function" then
+            local now = GetTime()
+            if type(now) == "number" and now > 0 then
+                if (now - CE_LastAuxWarnAt) < 1.0 then
+                    return
+                end
+                CE_LastAuxWarnAt = now
+            end
+        end
+
+        if UIErrorsFrame and UIErrorsFrame.AddMessage then
+            UIErrorsFrame:AddMessage(text, 1, 0, 0, 1.0)
+            return
+        end
+        if DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage then
+            DEFAULT_CHAT_FRAME:AddMessage(text)
+        end
+    end
+
+    -- Only interact with aux if the aux UI is already open.
+    -- If it's not open (or aux isn't loaded), return false so callers can fall back (e.g. Blizzard AH).
+    local auxFrame = _G and _G.aux_frame
+    if not (auxFrame and auxFrame.IsShown and auxFrame:IsShown()) then
+        return false
+    end
+
+    if type(CE_CachedAuxModule) == "table" and type(CE_CachedAuxModule.get_tab) ~= "function" then
+        CE_CachedAuxModule = nil
+    end
+
+    local aux = (type(CE_CachedAuxModule) == "table" and CE_CachedAuxModule) or nil
+    if (type(aux) ~= "table" or type(aux.get_tab) ~= "function") and type(require) == "function" then
+        local ok, mod = pcall(require, "aux")
+        if ok and type(mod) == "table" and type(mod.get_tab) == "function" then
+            aux = mod
+            CE_CachedAuxModule = mod
+        end
+    end
+
+    if type(aux) ~= "table" or type(aux.get_tab) ~= "function" then
+        CE_ShowAuxWarning("aux is not loaded.")
+        return false
+    end
+
+    local tab = nil
+    do
+        local ok, result = pcall(aux.get_tab)
+        if ok then
+            tab = result
+        else
+            CE_CachedAuxModule = nil
+            CE_ShowAuxWarning("aux error: cannot access current tab.")
+            return false
+        end
+    end
+
+    if type(itemName) ~= "string" or itemName == "" then
+        CE_ShowAuxWarning("No item name to search.")
+        return false
+    end
+
+    local item_info = { item_id = itemId, name = itemName, item_key = tostring(itemId) .. ":0" }
+
+    local function try_click_link(t)
+        if type(t) == "table" and type(t.CLICK_LINK) == "function" then
+            local ok = pcall(t.CLICK_LINK, item_info)
+            if ok then
+                return true
+            end
+            CE_CachedAuxModule = nil
+            CE_ShowAuxWarning("aux error: search failed.")
+            return true
+        end
+        return false
+    end
+
+    local function try_use_item(t)
+        if type(t) == "table" and type(t.USE_ITEM) == "function" then
+            local ok = pcall(t.USE_ITEM, item_info)
+            if ok then
+                return true
+            end
+            CE_CachedAuxModule = nil
+            CE_ShowAuxWarning("aux error: search failed.")
+            return true
+        end
+        return false
+    end
+
+    -- aux UI is already open (checked via aux_frame); avoid relying on any aux.frame indirection.
+
+    local tabInfo = aux.tab_info
+    if type(tabInfo) == "table" then
+        local searchTab, searchIndex = nil, nil
+        for i = 1, table.getn(tabInfo) do
+            local t = tabInfo[i]
+            if type(t) == "table" and t.name == "Search" then
+                searchTab = t
+                searchIndex = i
+                break
+            end
+        end
+
+        if searchIndex then
+            if type(aux.set_tab) == "function" then
+                local ok = pcall(aux.set_tab, searchIndex)
+                if not ok then
+                    CE_CachedAuxModule = nil
+                    CE_ShowAuxWarning("aux error: cannot switch tabs.")
+                    return false
+                end
+            else
+                local onTabClick = aux.on_tab_click
+                if type(onTabClick) == "function" then
+                    local ok = pcall(onTabClick, searchIndex)
+                    if not ok then
+                        CE_CachedAuxModule = nil
+                        CE_ShowAuxWarning("aux error: cannot switch tabs.")
+                        return false
+                    end
+                end
+            end
+        end
+
+        if try_click_link(searchTab) or try_use_item(searchTab) then
+            return true
+        end
+    end
+
+    -- Fallback: try the currently active aux tab.
+    if try_click_link(tab) or try_use_item(tab) then
+        return true
+    end
+
+    CE_ShowAuxWarning("aux Search tab not available.")
+    return false
+end
+
 function CE_GetLastWord(text)
     if type(GetLastWord) == "function" then
         return GetLastWord(text)

@@ -271,6 +271,9 @@ local function CE_CreateCETabCheckbox(parentFrame)
             end
             CE_SetRaidDropdownToNaxxramas()
             CE_UpdateFooterText()
+            if type(CE_UpdateBuyTabState) == "function" then
+                CE_UpdateBuyTabState()
+            end
         elseif not checked and wasEnabled then
             ConsumesManager_Options.showColdEmbrace = false
             CE_ResetDropdownSelections()
@@ -279,9 +282,15 @@ local function CE_CreateCETabCheckbox(parentFrame)
                 CE_ClosePresetConfigWindow()
             end
             CE_UpdateFooterText()
+            if type(CE_UpdateBuyTabState) == "function" then
+                CE_UpdateBuyTabState()
+            end
         else
             ConsumesManager_Options.showColdEmbrace = checked and true or false
             CE_UpdateFooterText()
+            if type(CE_UpdateBuyTabState) == "function" then
+                CE_UpdateBuyTabState()
+            end
         end
         if type(ConsumesManager_UpdatePresetsConsumables) == "function" then
             ConsumesManager_UpdatePresetsConsumables()

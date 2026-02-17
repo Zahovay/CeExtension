@@ -19,6 +19,13 @@ if type(orig_UpdatePresetsConsumables) == "function" then
         else
             orig_UpdatePresetsConsumables()
         end
+
+        if ConsumesManager_Options.showColdEmbrace and type(CE_UpdateBuyConsumables) == "function" then
+            local buyContent = ConsumesManager_MainFrame and ConsumesManager_MainFrame.CEBuyTabContent
+            if buyContent and buyContent.IsShown and buyContent:IsShown() then
+                CE_UpdateBuyConsumables()
+            end
+        end
         if not ConsumesManager_Options.showColdEmbrace and type(CE_UpdatePresetLabels) == "function" then
             CE_UpdatePresetLabels()
         end
@@ -62,6 +69,9 @@ if type(orig_ShowMainWindow) == "function" then
         if type(CE_CreateCETab) == "function" then
             CE_CreateCETab()
         end
+        if type(CE_UpdateBuyTabState) == "function" then
+            CE_UpdateBuyTabState()
+        end
         local autoSelect = (ConsumesManager_Options and ConsumesManager_Options.ceAutoSelectClass ~= false) and true or false
         if autoSelect and type(CE_SetClassDropdownToCurrent) == "function" then
             CE_SetClassDropdownToCurrent()
@@ -81,6 +91,9 @@ if type(orig_CreateMainWindow) == "function" then
         orig_CreateMainWindow()
         if type(CE_CreateCETab) == "function" then
             CE_CreateCETab()
+        end
+        if type(CE_UpdateBuyTabState) == "function" then
+            CE_UpdateBuyTabState()
         end
     end
 end
