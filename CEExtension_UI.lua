@@ -73,11 +73,6 @@ function CE_SetClassDropdownToCurrent()
         return
     end
 
-    local classDropdown = _G["ConsumesManager_PresetsClassDropdown"]
-    if not classDropdown then
-        return
-    end
-
     local role, info = roleModule.Detect()
     local classToken = info and info.class or nil
     local tabIndex = info and info.primaryTab or 0
@@ -92,6 +87,8 @@ function CE_SetClassDropdownToCurrent()
     local label = talentFirst .. " " .. className
     ConsumesManager_SelectedClass = label
 
+    local classDropdown = _G["ConsumesManager_PresetsClassDropdown"]
+
     local entries = CE_BuildTalentClassList()
     local selectedIndex = 0
     for i = 1, table.getn(entries) do
@@ -102,11 +99,13 @@ function CE_SetClassDropdownToCurrent()
     end
 
     local color = (cfg.CLASS_COLORS and cfg.CLASS_COLORS[className]) or "ffffff"
-    if type(UIDropDownMenu_SetSelectedID) == "function" and selectedIndex > 0 then
-        UIDropDownMenu_SetSelectedID(classDropdown, selectedIndex)
-    end
-    if type(UIDropDownMenu_SetText) == "function" then
-        UIDropDownMenu_SetText("|cff" .. color .. label .. "|r", classDropdown)
+    if classDropdown then
+        if type(UIDropDownMenu_SetSelectedID) == "function" and selectedIndex > 0 then
+            UIDropDownMenu_SetSelectedID(classDropdown, selectedIndex)
+        end
+        if type(UIDropDownMenu_SetText) == "function" then
+            UIDropDownMenu_SetText("|cff" .. color .. label .. "|r", classDropdown)
+        end
     end
 
     ConsumesManager_UpdatePresetsConsumables()
@@ -236,7 +235,14 @@ function CE_CreateSettingsCheckbox(parentFrame)
     local checkboxFrame = existingFrame or CreateFrame("Frame", nil, scrollChild)
     checkboxFrame:SetParent(scrollChild)
     checkboxFrame:ClearAllPoints()
-    checkboxFrame:SetWidth(WindowWidth - 10)
+    local baseWidth = (type(WindowWidth) == "number" and WindowWidth)
+        or (parentFrame and parentFrame.GetWidth and parentFrame:GetWidth())
+        or (scrollChild and scrollChild.GetWidth and scrollChild:GetWidth())
+        or 480
+    if baseWidth < 200 then
+        baseWidth = 200
+    end
+    checkboxFrame:SetWidth(baseWidth - 10)
     checkboxFrame:SetHeight(18)
 
     if anchor and anchor ~= scrollChild then
@@ -267,11 +273,14 @@ function CE_CreateSettingsCheckbox(parentFrame)
     checkbox:SetScript("OnClick", function()
         local checked = checkbox:GetChecked()
         local wasEnabled = ConsumesManager_Options.showColdEmbrace and true or false
+        local autoSelect = (ConsumesManager_Options and ConsumesManager_Options.ceAutoSelectClass ~= false) and true or false
 
         if checked and not wasEnabled then
             ConsumesManager_Options.showColdEmbrace = true
             CE_InjectItemlist()
-            CE_SetClassDropdownToCurrent()
+            if autoSelect then
+                CE_SetClassDropdownToCurrent()
+            end
             CE_SetRaidDropdownToNaxxramas()
             CE_UpdateFooterText()
         elseif not checked and wasEnabled then
@@ -319,7 +328,13 @@ local function CE_CreateCETabCheckbox(parentFrame)
     local checkboxFrame = existingFrame or CreateFrame("Frame", nil, parentFrame)
     checkboxFrame:SetParent(parentFrame)
     checkboxFrame:ClearAllPoints()
-    checkboxFrame:SetWidth(WindowWidth - 60)
+    local baseWidth = (type(WindowWidth) == "number" and WindowWidth)
+        or (parentFrame and parentFrame.GetWidth and parentFrame:GetWidth())
+        or 480
+    if baseWidth < 200 then
+        baseWidth = 200
+    end
+    checkboxFrame:SetWidth(baseWidth - 60)
     checkboxFrame:SetHeight(18)
     checkboxFrame:SetPoint("TOPLEFT", parentFrame, "TOPLEFT", 0, -50)
     checkboxFrame:EnableMouse(true)
@@ -344,11 +359,14 @@ local function CE_CreateCETabCheckbox(parentFrame)
     checkbox:SetScript("OnClick", function()
         local checked = checkbox:GetChecked()
         local wasEnabled = ConsumesManager_Options.showColdEmbrace and true or false
+        local autoSelect = (ConsumesManager_Options and ConsumesManager_Options.ceAutoSelectClass ~= false) and true or false
 
         if checked and not wasEnabled then
             ConsumesManager_Options.showColdEmbrace = true
             CE_InjectItemlist()
-            CE_SetClassDropdownToCurrent()
+            if autoSelect then
+                CE_SetClassDropdownToCurrent()
+            end
             CE_SetRaidDropdownToNaxxramas()
             CE_UpdateFooterText()
         elseif not checked and wasEnabled then
@@ -485,13 +503,63 @@ local function CE_CreateCETabCheckbox(parentFrame)
         end
     end)
 
+    -- Auto-select class/talent toggle (affects opening the main window and the planner)
+    if ConsumesManager_Options and ConsumesManager_Options.ceAutoSelectClass == nil then
+        ConsumesManager_Options.ceAutoSelectClass = true
+    end
+
+    local autoFrame = parentFrame.CEAutoSelectFrame
+    if not autoFrame then
+        autoFrame = CreateFrame("Frame", nil, parentFrame)
+        parentFrame.CEAutoSelectFrame = autoFrame
+    end
+    autoFrame:ClearAllPoints()
+    autoFrame:SetWidth(baseWidth - 60)
+    autoFrame:SetHeight(18)
+    autoFrame:SetPoint("TOPLEFT", radioTwo, "BOTTOMLEFT", 0, -8)
+    autoFrame:EnableMouse(true)
+
+    local autoBox = parentFrame.CEAutoSelectBox
+    if not autoBox then
+        autoBox = CreateFrame("CheckButton", nil, autoFrame)
+        parentFrame.CEAutoSelectBox = autoBox
+    end
+    autoBox:SetParent(autoFrame)
+    autoBox:ClearAllPoints()
+    autoBox:SetWidth(16)
+    autoBox:SetHeight(16)
+    autoBox:SetPoint("LEFT", autoFrame, "LEFT", 0, 0)
+    autoBox:SetNormalTexture("Interface\\Buttons\\UI-CheckBox-Up")
+    autoBox:SetPushedTexture("Interface\\Buttons\\UI-CheckBox-Down")
+    autoBox:SetHighlightTexture("Interface\\Buttons\\UI-CheckBox-Highlight")
+    autoBox:SetCheckedTexture("Interface\\Buttons\\UI-CheckBox-Check")
+    autoBox:SetChecked(ConsumesManager_Options.ceAutoSelectClass ~= false)
+
+    local autoLabel = parentFrame.CEAutoSelectLabel
+    if not autoLabel then
+        autoLabel = autoFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        parentFrame.CEAutoSelectLabel = autoLabel
+    end
+    autoLabel:ClearAllPoints()
+    autoLabel:SetPoint("LEFT", autoBox, "RIGHT", 6, 0)
+    autoLabel:SetText("Auto-select class/talents on open")
+    autoLabel:SetJustifyH("LEFT")
+
+    autoBox:SetScript("OnClick", function()
+        local checked = autoBox:GetChecked()
+        ConsumesManager_Options.ceAutoSelectClass = checked and true or false
+    end)
+    autoFrame:SetScript("OnMouseDown", function()
+        autoBox:Click()
+    end)
+
     local presetButton = parentFrame.CEPresetConfigButton
     if not presetButton then
         presetButton = CreateFrame("Button", nil, parentFrame, "UIPanelButtonTemplate")
         parentFrame.CEPresetConfigButton = presetButton
     end
     presetButton:ClearAllPoints()
-    presetButton:SetPoint("TOPLEFT", radioTwo, "BOTTOMLEFT", -2, -10)
+    presetButton:SetPoint("TOPLEFT", autoFrame, "BOTTOMLEFT", -2, -10)
     presetButton:SetWidth(160)
     presetButton:SetHeight(20)
     presetButton:SetText("Raid consumables Planner")
@@ -577,7 +645,13 @@ local function CE_CreateCETabContent(tabIndex)
     end
 
     local content = CreateFrame("Frame", nil, ConsumesManager_MainFrame)
-    content:SetWidth(WindowWidth - 50)
+    local baseWidth = (type(WindowWidth) == "number" and WindowWidth)
+        or (ConsumesManager_MainFrame and ConsumesManager_MainFrame.GetWidth and ConsumesManager_MainFrame:GetWidth())
+        or 480
+    if baseWidth < 200 then
+        baseWidth = 200
+    end
+    content:SetWidth(baseWidth - 50)
     content:SetHeight(380)
     content:SetPoint("TOPLEFT", ConsumesManager_MainFrame, "TOPLEFT", 30, -80)
     content:Hide()

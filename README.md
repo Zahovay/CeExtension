@@ -6,7 +6,7 @@
 Cold Embrace extension for [ConsumesManager](https://github.com/Cinecom/ConsumesManager?tab=readme-ov-file#) on Turtle WoW. It adds CE-specific presets and role/spec handling to help your raid track required consumables.
 
 ## Features
-- Auto-selects class/talent when CE extension is enabled.
+- Optional auto-select of class/talents on open (can be disabled to keep your last selected value).
 - Auto-adjusts potion magic damage type requirements by spec.
 - Shows required counts alongside owned counts with configurable ordering (Required/Owned or Owned/Required).
 - Includes additional consumables not present in the base addon for comprehensive CE readiness.
@@ -14,6 +14,7 @@ Cold Embrace extension for [ConsumesManager](https://github.com/Cinecom/Consumes
 - CE presets and role/spec grouping in the Presets tab.
 - Collapsible CE groups with status coloring and completion totals.
 - CE tab with extension settings and configuration.
+- Raid consumables Planner window with per-raid tabs, class/talent selector, search, “Selected only” filter, and copy-from-raid.
 - Non-destructive: base addon remains intact and CE changes are removed when disabled (CE tab remains visible).
 
 ## Requirements
@@ -42,6 +43,15 @@ See [LICENSE](LICENSE).
 3. Check "Enable Cold Embrace extension".
 4. Open the Presets tab and select a class/talent.
 5. CE groups and requirements will appear.
+
+Planner:
+- CE tab -> click "Raid consumables Planner".
+- Use the Class/Talent dropdown inside the planner to edit other presets.
+- Use Search and “Selected only” to quickly find and review selected consumables.
+
+Auto-select behavior:
+- When "Auto-select class/talents on open" is enabled, opening the main window or the planner will auto-detect your current class/spec and switch the class selector.
+- Disable it to keep your previously selected class/talents when opening windows.
 
 Optional configuration:
 - In the CE tab, choose Required/Owned or Owned/Required to control the order shown in Presets.

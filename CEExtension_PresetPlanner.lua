@@ -4,7 +4,7 @@ local function CE_GetPresetWindowSize()
     local mainFrame = ConsumesManager_MainFrame
     local baseWidth = (mainFrame and mainFrame.GetWidth and mainFrame:GetWidth()) or WindowWidth or 480
     local baseHeight = (mainFrame and mainFrame.GetHeight and mainFrame:GetHeight()) or 512
-    return math.floor(baseWidth + 450), math.floor(baseHeight - 150)
+    return math.floor(baseWidth + 450), math.floor(baseHeight - 100)
 end
 
 local function CE_SetTabButtonState(button, isActive)
@@ -57,37 +57,41 @@ local function CE_GetPlannerItems(raidName)
         return ""
     end
 
-    -- Include any items present in requirements metadata for this (class, raid)
-    -- so they show up in the planner even if not currently selected in `id`.
-    if selectedClass ~= "" and type(CE_GetPresetEntry) == "function" then
-        local entry = CE_GetPresetEntry(selectedClass, raidName)
-        if entry and type(entry.req) == "table" then
-            for itemId in pairs(entry.req) do
-                if type(itemId) == "number" and not seen[itemId] then
-                    local name = getName(itemId)
-                    if name == "" then
-                        name = tostring(itemId)
+    -- Keep the planner list stable across raid selection by including the union of
+    -- all items configured for this class across all raids (both selected ids and
+    -- requirement metadata).
+    if selectedClass ~= "" and type(CE_EnsurePresetTabDefaults) == "function" then
+        local store = CE_EnsurePresetTabDefaults()
+        local presets = store and store[selectedClass]
+        if type(presets) == "table" then
+            for pi = 1, table.getn(presets) do
+                local entry = presets[pi]
+                if type(entry) == "table" then
+                    if type(entry.req) == "table" then
+                        for itemId in pairs(entry.req) do
+                            if type(itemId) == "number" and not seen[itemId] then
+                                local name = getName(itemId)
+                                if name == "" then
+                                    name = tostring(itemId)
+                                end
+                                table.insert(results, { id = itemId, name = name })
+                                seen[itemId] = true
+                            end
+                        end
                     end
-                    table.insert(results, { id = itemId, name = name })
-                    seen[itemId] = true
-                end
-            end
-        end
-    end
-
-    -- Always include any items already in the Presets-tab data for this (class, raid).
-    if selectedClass ~= "" and type(CE_GetPresetIdsFor) == "function" then
-        local ids = CE_GetPresetIdsFor(selectedClass, raidName)
-        if type(ids) == "table" then
-            for i = 1, table.getn(ids) do
-                local itemId = ids[i]
-                if type(itemId) == "number" and not seen[itemId] then
-                    local name = getName(itemId)
-                    if name == "" then
-                        name = tostring(itemId)
+                    if type(entry.id) == "table" then
+                        for i = 1, table.getn(entry.id) do
+                            local itemId = entry.id[i]
+                            if type(itemId) == "number" and not seen[itemId] then
+                                local name = getName(itemId)
+                                if name == "" then
+                                    name = tostring(itemId)
+                                end
+                                table.insert(results, { id = itemId, name = name })
+                                seen[itemId] = true
+                            end
+                        end
                     end
-                    table.insert(results, { id = itemId, name = name })
-                    seen[itemId] = true
                 end
             end
         end
@@ -140,7 +144,7 @@ local function CE_BuildPlannerRows(scrollChild, parentFrame, items)
             parentFrame.plannerEmptyLabel = emptyLabel
         end
         emptyLabel:SetPoint("TOPLEFT", parentFrame, "TOPLEFT", 10, -10)
-        emptyLabel:SetText("Select a Class in the Presets tab first.")
+        emptyLabel:SetText("Select a Class.")
         emptyLabel:SetJustifyH("LEFT")
         emptyLabel:Show()
         scrollChild:SetHeight(lineHeight)
@@ -298,6 +302,14 @@ local function CE_BuildPlannerRows(scrollChild, parentFrame, items)
                         row.optionalBox:Enable()
                         row.optionalBox:SetAlpha(1)
                     end
+                    if row.mandatoryHit and row.mandatoryHit.Enable then
+                        row.mandatoryHit:Enable()
+                        row.mandatoryHit:SetAlpha(1)
+                    end
+                    if row.optionalHit and row.optionalHit.Enable then
+                        row.optionalHit:Enable()
+                        row.optionalHit:SetAlpha(1)
+                    end
                     if row.mandatoryLabel then
                         row.mandatoryLabel:SetTextColor(1, 1, 1)
                     end
@@ -317,6 +329,14 @@ local function CE_BuildPlannerRows(scrollChild, parentFrame, items)
                     if row.optionalBox and row.optionalBox.Disable then
                         row.optionalBox:Disable()
                         row.optionalBox:SetAlpha(0.6)
+                    end
+                    if row.mandatoryHit and row.mandatoryHit.Disable then
+                        row.mandatoryHit:Disable()
+                        row.mandatoryHit:SetAlpha(0.6)
+                    end
+                    if row.optionalHit and row.optionalHit.Disable then
+                        row.optionalHit:Disable()
+                        row.optionalHit:SetAlpha(0.6)
                     end
                     if row.mandatoryLabel then
                         row.mandatoryLabel:SetTextColor(0.6, 0.6, 0.6)
@@ -349,12 +369,18 @@ local function CE_BuildPlannerRows(scrollChild, parentFrame, items)
             end)
 
             row.mandatoryHit:SetScript("OnClick", function()
+                if row.checkbox:GetChecked() ~= 1 then
+                    return
+                end
                 row.SetStatus(row.mandatoryBox:GetChecked() and nil or row.mandatoryBox)
                 if row.SaveState then
                     row.SaveState()
                 end
             end)
             row.optionalHit:SetScript("OnClick", function()
+                if row.checkbox:GetChecked() ~= 1 then
+                    return
+                end
                 row.SetStatus(row.optionalBox:GetChecked() and nil or row.optionalBox)
                 if row.SaveState then
                     row.SaveState()
@@ -507,13 +533,297 @@ end
 
 local CE_UpdatePlannerList
 
+local function CE_GetPlannerOrderedRaids()
+    local cfg = CE_GetConfig()
+    local raids = (cfg and cfg.ORDERED_RAIDS) or {}
+    return type(raids) == "table" and raids or {}
+end
+
+local function CE_GetDefaultCopyFromRaid(currentRaid)
+    local raids = CE_GetPlannerOrderedRaids()
+    local normalizedCurrent = CE_NormalizeRaidName and CE_NormalizeRaidName(currentRaid) or currentRaid
+    for i = 1, table.getn(raids) do
+        local r = raids[i]
+        if type(r) == "string" then
+            local nr = CE_NormalizeRaidName and CE_NormalizeRaidName(r) or r
+            if nr ~= normalizedCurrent then
+                return r
+            end
+        end
+    end
+    return nil
+end
+
+local function CE_UpdatePlannerCopyControls(parentFrame)
+    if not parentFrame then
+        return
+    end
+
+    local currentRaid = parentFrame.plannerTabName or ""
+    local raids = CE_GetPlannerOrderedRaids()
+    local hasOtherRaid = false
+    local normalizedCurrent = CE_NormalizeRaidName and CE_NormalizeRaidName(currentRaid) or currentRaid
+    for i = 1, table.getn(raids) do
+        local r = raids[i]
+        if type(r) == "string" then
+            local nr = CE_NormalizeRaidName and CE_NormalizeRaidName(r) or r
+            if nr ~= normalizedCurrent then
+                hasOtherRaid = true
+                break
+            end
+        end
+    end
+
+    if not hasOtherRaid then
+        parentFrame.copyFromRaid = nil
+        if parentFrame.copyFromButton then
+            parentFrame.copyFromButton:Disable()
+        end
+        if parentFrame.copyFromDropDown and UIDropDownMenu_SetText then
+            UIDropDownMenu_SetText("-", parentFrame.copyFromDropDown)
+        end
+        return
+    end
+
+    if type(parentFrame.copyFromRaid) ~= "string" or parentFrame.copyFromRaid == "" then
+        parentFrame.copyFromRaid = CE_GetDefaultCopyFromRaid(currentRaid)
+    else
+        local normalizedSelected = CE_NormalizeRaidName and CE_NormalizeRaidName(parentFrame.copyFromRaid) or parentFrame.copyFromRaid
+        if normalizedSelected == normalizedCurrent then
+            parentFrame.copyFromRaid = CE_GetDefaultCopyFromRaid(currentRaid)
+        end
+    end
+
+    if parentFrame.copyFromDropDown and UIDropDownMenu_SetSelectedValue then
+        UIDropDownMenu_SetSelectedValue(parentFrame.copyFromDropDown, parentFrame.copyFromRaid)
+        if UIDropDownMenu_SetText then
+            UIDropDownMenu_SetText(parentFrame.copyFromRaid or "-", parentFrame.copyFromDropDown)
+        end
+    end
+    if parentFrame.copyFromButton then
+        parentFrame.copyFromButton:Enable()
+    end
+end
+
 local function CE_CreatePlannerList(parentFrame)
     if not parentFrame or parentFrame.plannerBuilt then
         return
     end
 
+    -- Header row (space for planner actions)
+    local header = CreateFrame("Frame", nil, parentFrame)
+    header:SetPoint("TOPLEFT", parentFrame, "TOPLEFT", 8, -4)
+    header:SetPoint("TOPRIGHT", parentFrame, "TOPRIGHT", -8, -4)
+    header:SetHeight(54)
+    parentFrame.plannerHeader = header
+
+    local row1 = CreateFrame("Frame", nil, header)
+    row1:SetPoint("TOPLEFT", header, "TOPLEFT", 0, 0)
+    row1:SetPoint("TOPRIGHT", header, "TOPRIGHT", 0, 0)
+    row1:SetHeight(26)
+
+    local row2 = CreateFrame("Frame", nil, header)
+    row2:SetPoint("TOPLEFT", row1, "BOTTOMLEFT", 0, 0)
+    row2:SetPoint("TOPRIGHT", row1, "BOTTOMRIGHT", 0, 0)
+    row2:SetHeight(26)
+
+    -- Search (left)
+    local searchLabel = header:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    searchLabel:SetPoint("LEFT", row2, "LEFT", 0, 0)
+    searchLabel:SetText("Search:")
+    searchLabel:SetWidth(50)
+    searchLabel:SetJustifyH("RIGHT")
+    parentFrame.searchLabel = searchLabel
+
+    local searchInputName = "CEPlannerSearchInput_" .. (string.gsub(parentFrame.plannerTabName or "", "%s+", ""))
+    local searchInput = CreateFrame("EditBox", searchInputName, header, "InputBoxTemplate")
+    searchInput:SetWidth(180)
+    searchInput:SetHeight(16)
+    searchInput:SetAutoFocus(false)
+    searchInput:SetPoint("LEFT", searchLabel, "RIGHT", 30, 0)
+    searchInput:SetText(parentFrame.searchText or "")
+    searchInput:SetScript("OnTextChanged", function()
+        parentFrame.searchText = this:GetText() or ""
+        if type(CE_UpdatePlannerList) == "function" then
+            CE_UpdatePlannerList(parentFrame)
+        end
+    end)
+    searchInput:SetScript("OnEscapePressed", function()
+        this:ClearFocus()
+    end)
+    parentFrame.searchInput = searchInput
+
+    local tabName = parentFrame.plannerTabName or ""
+    tabName = string.gsub(tabName, "%s+", "")
+
+    -- Selected-only filter (shared across all raid tabs)
+    local selectedOnlyBox = CreateFrame("CheckButton", nil, header)
+    selectedOnlyBox:SetWidth(16)
+    selectedOnlyBox:SetHeight(16)
+    selectedOnlyBox:SetNormalTexture("Interface\\Buttons\\UI-CheckBox-Up")
+    selectedOnlyBox:SetPushedTexture("Interface\\Buttons\\UI-CheckBox-Down")
+    selectedOnlyBox:SetHighlightTexture("Interface\\Buttons\\UI-CheckBox-Highlight")
+    selectedOnlyBox:SetCheckedTexture("Interface\\Buttons\\UI-CheckBox-Check")
+    selectedOnlyBox:SetPoint("LEFT", searchInput, "RIGHT", 14, 0)
+
+    local selectedOnlyLabel = header:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    selectedOnlyLabel:SetPoint("LEFT", selectedOnlyBox, "RIGHT", 4, 0)
+    selectedOnlyLabel:SetText("Selected only")
+
+    local owner = parentFrame.GetParent and parentFrame:GetParent() or nil
+    selectedOnlyBox:SetChecked(owner and owner.cePlannerSelectedOnly and true or false)
+
+    local function CE_ApplySelectedOnly(checked)
+        local o = parentFrame.GetParent and parentFrame:GetParent() or nil
+        if o then
+            o.cePlannerSelectedOnly = checked and true or false
+            if type(o.tabContents) == "table" and type(CE_UpdatePlannerList) == "function" then
+                for i = 1, table.getn(o.tabContents) do
+                    CE_UpdatePlannerList(o.tabContents[i])
+                end
+            elseif type(CE_UpdatePlannerList) == "function" then
+                CE_UpdatePlannerList(parentFrame)
+            end
+        elseif type(CE_UpdatePlannerList) == "function" then
+            CE_UpdatePlannerList(parentFrame)
+        end
+    end
+
+    selectedOnlyBox:SetScript("OnClick", function()
+        CE_ApplySelectedOnly(this:GetChecked() and true or false)
+    end)
+
+    local selectedOnlyHit = CreateFrame("Button", nil, header)
+    selectedOnlyHit:EnableMouse(true)
+    selectedOnlyHit:SetPoint("TOPLEFT", selectedOnlyLabel, "TOPLEFT", -2, 2)
+    selectedOnlyHit:SetPoint("BOTTOMRIGHT", selectedOnlyLabel, "BOTTOMRIGHT", 2, -2)
+    selectedOnlyHit:SetScript("OnClick", function()
+        local checked = not (selectedOnlyBox:GetChecked() and true or false)
+        selectedOnlyBox:SetChecked(checked)
+        CE_ApplySelectedOnly(checked)
+    end)
+    parentFrame.selectedOnlyHit = selectedOnlyHit
+    parentFrame.selectedOnlyBox = selectedOnlyBox
+    parentFrame.selectedOnlyLabel = selectedOnlyLabel
+
+    local copyButton = CreateFrame("Button", nil, header, "UIPanelButtonTemplate")
+    copyButton:SetWidth(70)
+    copyButton:SetHeight(20)
+    copyButton:SetPoint("RIGHT", row1, "RIGHT", 0, 0)
+    copyButton:SetText("Copy")
+    if copyButton.GetFontString and copyButton:GetFontString() then
+        copyButton:GetFontString():SetFont("Fonts\\FRIZQT__.TTF", 10, "NORMAL")
+    end
+    copyButton:SetScript("OnClick", function()
+        local selectedClass = ConsumesManager_SelectedClass
+        if type(selectedClass) ~= "string" or selectedClass == "" then
+            return
+        end
+        local fromRaid = parentFrame.copyFromRaid
+        local toRaid = parentFrame.plannerTabName
+        if type(fromRaid) ~= "string" or fromRaid == "" or type(toRaid) ~= "string" or toRaid == "" then
+            return
+        end
+        if type(CE_CopyPresetRaidConfig) == "function" then
+            local ok = CE_CopyPresetRaidConfig(selectedClass, fromRaid, toRaid)
+            if ok and type(CE_UpdatePlannerList) == "function" then
+                CE_UpdatePlannerList(parentFrame)
+            end
+        end
+    end)
+    parentFrame.copyFromButton = copyButton
+
+    local dropDownName = "CEPlannerCopyFromDropDown_" .. tabName
+    local copyDropDown = CreateFrame("Frame", dropDownName, header, "UIDropDownMenuTemplate")
+    copyDropDown:SetPoint("RIGHT", copyButton, "LEFT", -10, -2)
+    UIDropDownMenu_SetWidth(150, copyDropDown)
+    UIDropDownMenu_Initialize(copyDropDown, function()
+        local raids = CE_GetPlannerOrderedRaids()
+        local current = parentFrame.plannerTabName or ""
+        local normalizedCurrent = CE_NormalizeRaidName and CE_NormalizeRaidName(current) or current
+
+        for i = 1, table.getn(raids) do
+            local raidName = raids[i]
+            if type(raidName) == "string" then
+                local normalizedRaid = CE_NormalizeRaidName and CE_NormalizeRaidName(raidName) or raidName
+                if normalizedRaid ~= normalizedCurrent then
+                    local info = {}
+                    info.text = raidName
+                    info.value = raidName
+                    info.func = function()
+                        parentFrame.copyFromRaid = raidName
+                        UIDropDownMenu_SetSelectedValue(copyDropDown, raidName)
+                        if UIDropDownMenu_SetText then
+                            UIDropDownMenu_SetText(raidName, copyDropDown)
+                        end
+                    end
+                    UIDropDownMenu_AddButton(info)
+                end
+            end
+        end
+    end)
+    parentFrame.copyFromDropDown = copyDropDown
+
+    local copyLabel = header:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    copyLabel:SetPoint("RIGHT", copyDropDown, "LEFT", 0, 0)
+    copyLabel:SetText("Copy from:")
+    parentFrame.copyFromLabel = copyLabel
+
+    -- Class/talent selector (same data as Presets tab selector)
+    local classLabel = header:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    classLabel:SetPoint("LEFT", row1, "LEFT", 0, 0)
+    classLabel:SetText("Class:")
+    classLabel:SetWidth(50)
+    classLabel:SetJustifyH("RIGHT")
+    parentFrame.classLabel = classLabel
+
+    local classDropDownName = "CEPlannerClassDropDown_" .. tabName
+    local classDropDown = CreateFrame("Frame", classDropDownName, header, "UIDropDownMenuTemplate")
+    classDropDown:SetPoint("LEFT", classLabel, "RIGHT", 6, -2)
+    UIDropDownMenu_SetWidth(170, classDropDown)
+    parentFrame.classDropDown = classDropDown
+
+    UIDropDownMenu_Initialize(classDropDown, function()
+        local useCE = ConsumesManager_Options and ConsumesManager_Options.showColdEmbrace
+        local entries = (useCE and type(CE_BuildTalentClassList) == "function" and CE_BuildTalentClassList())
+            or (type(CE_BuildOriginalClassList) == "function" and CE_BuildOriginalClassList())
+            or {}
+        local cfg = useCE and type(CE_GetConfig) == "function" and CE_GetConfig() or nil
+
+        local idx = 1
+        while entries[idx] do
+            local cName = entries[idx]
+            local cIndex = idx
+            local info = {}
+            local lastWord = type(CE_GetLastWord) == "function" and CE_GetLastWord(cName) or ""
+            local color = (cfg and cfg.CLASS_COLORS and cfg.CLASS_COLORS[lastWord]) or "ffffff"
+            info.text = "|cff" .. color .. cName .. "|r"
+            info.func = function()
+                UIDropDownMenu_SetSelectedID(classDropDown, cIndex)
+                ConsumesManager_SelectedClass = cName
+                if not useCE and type(ConsumesManager_UpdateRaidsDropdown) == "function" then
+                    ConsumesManager_UpdateRaidsDropdown()
+                end
+                if type(ConsumesManager_UpdatePresetsConsumables) == "function" then
+                    ConsumesManager_UpdatePresetsConsumables()
+                end
+
+                local owner = parentFrame.GetParent and parentFrame:GetParent() or nil
+                if owner and type(owner.tabContents) == "table" and type(CE_UpdatePlannerList) == "function" then
+                    for i = 1, table.getn(owner.tabContents) do
+                        CE_UpdatePlannerList(owner.tabContents[i])
+                    end
+                elseif type(CE_UpdatePlannerList) == "function" then
+                    CE_UpdatePlannerList(parentFrame)
+                end
+            end
+            UIDropDownMenu_AddButton(info)
+            idx = idx + 1
+        end
+    end)
+
     local scrollFrame = CreateFrame("ScrollFrame", nil, parentFrame)
-    scrollFrame:SetPoint("TOPLEFT", parentFrame, "TOPLEFT", 8, -8)
+    scrollFrame:SetPoint("TOPLEFT", parentFrame, "TOPLEFT", 8, -60)
     scrollFrame:SetPoint("BOTTOMRIGHT", parentFrame, "BOTTOMRIGHT", -26, 8)
     scrollFrame:EnableMouseWheel(true)
 
@@ -576,6 +886,43 @@ CE_UpdatePlannerList = function(parentFrame)
     if not parentFrame or not parentFrame.plannerBuilt then
         return
     end
+
+    CE_UpdatePlannerCopyControls(parentFrame)
+
+    -- Keep class dropdown in sync with the Presets tab selection.
+    if parentFrame.classDropDown and type(UIDropDownMenu_SetSelectedID) == "function" then
+        local selectedClass = ConsumesManager_SelectedClass
+        local useCE = ConsumesManager_Options and ConsumesManager_Options.showColdEmbrace
+        local entries = (useCE and type(CE_BuildTalentClassList) == "function" and CE_BuildTalentClassList())
+            or (type(CE_BuildOriginalClassList) == "function" and CE_BuildOriginalClassList())
+            or {}
+        local cfg = useCE and type(CE_GetConfig) == "function" and CE_GetConfig() or nil
+
+        local selectedIndex = 0
+        if type(selectedClass) == "string" and selectedClass ~= "" then
+            for i = 1, table.getn(entries) do
+                if entries[i] == selectedClass then
+                    selectedIndex = i
+                    break
+                end
+            end
+        end
+
+        if selectedIndex > 0 then
+            UIDropDownMenu_SetSelectedID(parentFrame.classDropDown, selectedIndex)
+            if type(UIDropDownMenu_SetText) == "function" then
+                local lastWord = type(CE_GetLastWord) == "function" and CE_GetLastWord(selectedClass) or ""
+                local color = (cfg and cfg.CLASS_COLORS and cfg.CLASS_COLORS[lastWord]) or "ffffff"
+                UIDropDownMenu_SetText("|cff" .. color .. selectedClass .. "|r", parentFrame.classDropDown)
+            end
+        else
+            UIDropDownMenu_SetSelectedID(parentFrame.classDropDown, 0)
+            if type(UIDropDownMenu_SetText) == "function" then
+                UIDropDownMenu_SetText("Select |cffffff00Class|r", parentFrame.classDropDown)
+            end
+        end
+    end
+
     local width = 0
     if parentFrame.GetWidth then
         width = parentFrame:GetWidth() or 0
@@ -587,6 +934,66 @@ CE_UpdatePlannerList = function(parentFrame)
         parentFrame.plannerScrollChild:SetWidth(width - 40)
     end
     local items = CE_GetPlannerItems(parentFrame.plannerTabName)
+
+    -- Apply selected-only filter if enabled (state is shared on the owner frame).
+    local owner = parentFrame.GetParent and parentFrame:GetParent() or nil
+    local selectedOnly = owner and owner.cePlannerSelectedOnly and true or false
+    if parentFrame.selectedOnlyBox and parentFrame.selectedOnlyBox.GetChecked then
+        local isChecked = parentFrame.selectedOnlyBox:GetChecked() and true or false
+        if isChecked ~= selectedOnly then
+            parentFrame.selectedOnlyBox:SetChecked(selectedOnly)
+        end
+    end
+
+    local q = parentFrame.searchText
+    if type(q) == "string" then
+        q = string.lower(string.gsub(q, "^%s+", ""))
+        q = string.lower(string.gsub(q, "%s+$", ""))
+    else
+        q = ""
+    end
+    if q ~= "" and type(items) == "table" then
+        local filtered = {}
+        for i = 1, table.getn(items) do
+            local item = items[i]
+            if item then
+                local nameLower = type(item.name) == "string" and string.lower(item.name) or ""
+                local idText = item.id and tostring(item.id) or ""
+                if (nameLower ~= "" and string.find(nameLower, q, 1, true) ~= nil)
+                    or (idText ~= "" and string.find(string.lower(idText), q, 1, true) ~= nil) then
+                    table.insert(filtered, item)
+                end
+            end
+        end
+        items = filtered
+    end
+
+    if selectedOnly and type(items) == "table" then
+        local selectedClass = ConsumesManager_SelectedClass
+        if type(selectedClass) == "string" and selectedClass ~= "" and type(CE_GetPresetIdsFor) == "function" then
+            local presetSet = {}
+            local ids = CE_GetPresetIdsFor(selectedClass, parentFrame.plannerTabName)
+            if type(ids) == "table" then
+                for i = 1, table.getn(ids) do
+                    local itemId = ids[i]
+                    if type(itemId) == "number" then
+                        presetSet[itemId] = true
+                    end
+                end
+            end
+
+            local filtered = {}
+            for i = 1, table.getn(items) do
+                local item = items[i]
+                local itemId = item and item.id
+                if type(itemId) == "number" and presetSet[itemId] then
+                    table.insert(filtered, item)
+                end
+            end
+            items = filtered
+        end
+    end
+
     CE_BuildPlannerRows(parentFrame.plannerScrollChild, parentFrame, items)
 
     local scrollFrame = parentFrame.plannerScrollFrame
@@ -886,6 +1293,11 @@ function CE_ShowPresetConfigWindow()
     end
     if not ConsumesManager_MainFrame then
         return
+    end
+
+    local autoSelect = (ConsumesManager_Options and ConsumesManager_Options.ceAutoSelectClass ~= false) and true or false
+    if autoSelect and type(CE_SetClassDropdownToCurrent) == "function" then
+        CE_SetClassDropdownToCurrent()
     end
 
     local frame = CE_CreatePresetConfigWindow()

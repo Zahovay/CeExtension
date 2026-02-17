@@ -63,7 +63,8 @@ if type(orig_ShowMainWindow) == "function" then
         if type(CE_CreateCETab) == "function" then
             CE_CreateCETab()
         end
-        if type(CE_SetClassDropdownToCurrent) == "function" then
+        local autoSelect = (ConsumesManager_Options and ConsumesManager_Options.ceAutoSelectClass ~= false) and true or false
+        if autoSelect and type(CE_SetClassDropdownToCurrent) == "function" then
             CE_SetClassDropdownToCurrent()
         end
         if type(CE_SetRaidDropdownToNaxxramas) == "function" then

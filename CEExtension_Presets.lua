@@ -188,8 +188,10 @@ function CE_UpdatePresetsConsumables()
     local raidName = (type(CE_NormalizeRaidName) == "function" and CE_NormalizeRaidName(ConsumesManager_SelectedRaid)) or (ConsumesManager_SelectedRaid or "Naxxramas")
     local selectedClass = ConsumesManager_SelectedClass
     if type(selectedClass) ~= "string" or selectedClass == "" then
-        parentFrame.messageLabel:SetText("|cffff0000Select a class in the Presets tab.|r")
-        parentFrame.messageLabel:Show()
+        if parentFrame.messageLabel then
+            parentFrame.messageLabel:SetText("|cffff0000Select a class in the Presets tab.|r")
+            parentFrame.messageLabel:Show()
+        end
         if parentFrame.orderByNameButton then parentFrame.orderByNameButton:Hide() end
         if parentFrame.orderByAmountButton then parentFrame.orderByAmountButton:Hide() end
         return
@@ -198,14 +200,18 @@ function CE_UpdatePresetsConsumables()
     local preset = (type(CE_GetPresetEntry) == "function" and CE_GetPresetEntry(selectedClass, raidName)) or nil
 
     if type(preset) ~= "table" or type(preset.id) ~= "table" then
-        parentFrame.messageLabel:SetText("|cffff0000No CE preset found for this class/raid.|r")
-        parentFrame.messageLabel:Show()
+        if parentFrame.messageLabel then
+            parentFrame.messageLabel:SetText("|cffff0000No CE preset found for this class/raid.|r")
+            parentFrame.messageLabel:Show()
+        end
         if parentFrame.orderByNameButton then parentFrame.orderByNameButton:Hide() end
         if parentFrame.orderByAmountButton then parentFrame.orderByAmountButton:Hide() end
         return
     end
 
-    parentFrame.messageLabel:Hide()
+    if parentFrame.messageLabel then
+        parentFrame.messageLabel:Hide()
+    end
 
     local function CE_GetName(itemId)
         if type(consumablesList) == "table" then
@@ -402,8 +408,10 @@ function CE_UpdatePresetsConsumables()
     end
 
     if not hasAnyVisibleItems then
-        parentFrame.noItemsMessage = parentFrame.messageLabel
-        parentFrame.noItemsMessage:SetText("|cffff0000No CE groups available.|r")
-        parentFrame.noItemsMessage:Show()
+        if parentFrame.messageLabel then
+            parentFrame.noItemsMessage = parentFrame.messageLabel
+            parentFrame.noItemsMessage:SetText("|cffff0000No CE groups available.|r")
+            parentFrame.noItemsMessage:Show()
+        end
     end
 end

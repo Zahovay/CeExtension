@@ -507,6 +507,79 @@ function CE_SetPresetReqFor(className, raidName, itemId, amount, status)
     end
 end
 
+-- Copy the entire preset configuration (selected items + requirements)
+-- from one raid to another for a given class.
+-- This replaces the destination tables to avoid leaving stale req entries.
+function CE_CopyPresetRaidConfig(className, fromRaidName, toRaidName)
+    if type(className) ~= "string" or className == "" then
+        return false
+    end
+    if type(fromRaidName) ~= "string" or fromRaidName == "" then
+        return false
+    end
+    if type(toRaidName) ~= "string" or toRaidName == "" then
+        return false
+    end
+
+    fromRaidName = CE_NormalizeRaidName(fromRaidName)
+    toRaidName = CE_NormalizeRaidName(toRaidName)
+    if fromRaidName == toRaidName then
+        return false
+    end
+
+    local src = CE_GetPresetEntry(className, fromRaidName)
+    if type(src) ~= "table" then
+        return false
+    end
+
+    local dst = CE_GetOrCreatePresetEntry(className, toRaidName)
+    if type(dst) ~= "table" then
+        return false
+    end
+
+    -- Copy selected item ids
+    local ids = {}
+    if type(src.id) == "table" then
+        for i = 1, table.getn(src.id) do
+            local itemId = src.id[i]
+            if type(itemId) == "number" then
+                table.insert(ids, itemId)
+            end
+        end
+    end
+
+    -- Copy requirements
+    local req = {}
+    if type(src.req) == "table" then
+        for itemId, r in pairs(src.req) do
+            if type(itemId) == "number" and type(r) == "table" then
+                req[itemId] = {
+                    amount = tonumber(r.amount) or 0,
+                    status = r.status or "mandatory"
+                }
+            end
+        end
+    end
+
+    -- Ensure selected items always have requirement entries.
+    for i = 1, table.getn(ids) do
+        local itemId = ids[i]
+        if type(itemId) == "number" then
+            req[itemId] = req[itemId] or { amount = 0, status = "mandatory" }
+            if req[itemId].amount == nil then
+                req[itemId].amount = 0
+            end
+            if req[itemId].status == nil then
+                req[itemId].status = "mandatory"
+            end
+        end
+    end
+
+    dst.id = ids
+    dst.req = req
+    return true
+end
+
 function CE_TogglePresetItem(className, raidName, itemId, enabled)
     itemId = tonumber(itemId)
     if type(itemId) ~= "number" then
