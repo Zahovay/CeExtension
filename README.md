@@ -1,6 +1,3 @@
-
-[![GitHub All Releases](https://img.shields.io/github/downloads/Zahovay/CeExtension/total.svg)](https://github.com/Zahovay/CeExtension/releases)
-
 # CeExtension (ConsumesManager CE)
 
 Cold Embrace extension for [ConsumesManager](https://github.com/Cinecom/ConsumesManager?tab=readme-ov-file#) on Turtle WoW. It adds CE-specific presets and role/spec handling to help your raid track required consumables.
