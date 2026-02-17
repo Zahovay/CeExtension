@@ -35,9 +35,13 @@ function CE_UpdateFooterText()
         return
     end
 
-    local baseText = "Made by Horyoshi (v" .. GetAddOnMetadata("ConsumesManager", "Version") .. ")"
+    local cmVer = (type(GetAddOnMetadata) == "function" and GetAddOnMetadata("ConsumesManager", "Version")) or "?"
+    if cmVer == "" then cmVer = "?" end
+    local baseText = "Made by Horyoshi (v" .. tostring(cmVer) .. ")"
     if ConsumesManager_Options.showColdEmbrace then
-        footerText:SetText(baseText .. " CeExtension by Zahobab (0.1.0)")
+        local ceVer = (type(GetAddOnMetadata) == "function" and GetAddOnMetadata("CeExtension", "Version")) or "?"
+        if ceVer == "" then ceVer = "?" end
+        footerText:SetText(baseText .. " CeExtension by Zahobab (v" .. tostring(ceVer) .. ")")
     else
         footerText:SetText(baseText)
     end

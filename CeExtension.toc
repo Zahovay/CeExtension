@@ -2,7 +2,7 @@
 ## Title: CeExtension (ConsumesManager CE)
 ## Notes: Cold Embrace extension for ConsumesManager.
 ## Author: Horyoshi
-## Version: 0.1.0
+## Version: 0.2.0
 ## Dependencies: ConsumesManager
 
 CEConfig.lua

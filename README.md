@@ -62,16 +62,26 @@ Optional configuration:
    <em>Enable the extension in the CE tab.</em>
 </p>
 
-<p>
-   <img src="images/potion_list.png" alt="CE Presets">
-   <br>
-   <em>View CE requirements in the Presets tab.</em>
-</p>
+<table>
+   <tr>
+      <td>
+         <img src="images/potion_list-1.png" alt="CE Presets - potion list 1">
+      </td>
+      <td>
+         <img src="images/potion_list-2.png" alt="CE Presets - potion list 2">
+      </td>
+   </tr>
+   <tr>
+      <td colspan="2">
+         <em>View CE requirements in the Presets tab. Collapsed CE groups show completion status.</em>
+      </td>
+   </tr>
+</table>
 
 <p>
-   <img src="images/collapsed_menu.png" alt="CE Collapsed Groups">
-   <br>
-   <em>Collapsed CE groups show completion status.</em>
+    <img src="images/planner.png" alt="Raid consumables Planner">
+    <br>
+    <em>Use the Planner to manage per-raid presets with search, selected-only, and copy-from.</em>
 </p>
 
 ## How to Switch On/Off
