@@ -1,5 +1,15 @@
 -- CE UI helpers
 
+local function CE_StyleCheckbox(checkbox)
+    if not checkbox then
+        return
+    end
+    checkbox:SetNormalTexture("Interface\\Buttons\\UI-CheckBox-Up")
+    checkbox:SetPushedTexture("Interface\\Buttons\\UI-CheckBox-Down")
+    checkbox:SetHighlightTexture("Interface\\Buttons\\UI-CheckBox-Highlight")
+    checkbox:SetCheckedTexture("Interface\\Buttons\\UI-CheckBox-Check")
+end
+
 local function CE_GetFooterTextRegion()
     if not ConsumesManager_MainFrame or type(ConsumesManager_MainFrame.GetRegions) ~= "function" then
         return nil
@@ -67,6 +77,9 @@ function CE_SetClassDropdownToCurrent()
     end
 
     local cfg = CE_GetConfig()
+    if type(cfg) ~= "table" then
+        return
+    end
 
     local roleModule = RaidConsumables and RaidConsumables.Role
     if not roleModule or type(roleModule.Detect) ~= "function" then
@@ -79,7 +92,7 @@ function CE_SetClassDropdownToCurrent()
     local tabName = (info and info.tabs and info.tabs[tabIndex]) or ""
 
     local className = (cfg.CLASS_DISPLAY and cfg.CLASS_DISPLAY[classToken or ""]) or ""
-    local talentFirst = CE_GetFirstWord(tabName)
+    local talentFirst = (type(CE_GetFirstWord) == "function" and CE_GetFirstWord(tabName)) or ""
     if className == "" or talentFirst == "" then
         return
     end
@@ -89,7 +102,7 @@ function CE_SetClassDropdownToCurrent()
 
     local classDropdown = _G["ConsumesManager_PresetsClassDropdown"]
 
-    local entries = CE_BuildTalentClassList()
+    local entries = type(CE_BuildTalentClassList) == "function" and CE_BuildTalentClassList() or {}
     local selectedIndex = 0
     for i = 1, table.getn(entries) do
         if entries[i] == label then
@@ -201,118 +214,6 @@ function CE_InitClassDropdown(classDropdown)
     end
 end
 
-function CE_CreateSettingsCheckbox(parentFrame)
-    if not parentFrame then
-        return
-    end
-
-    local scrollChild = parentFrame.scrollChild
-    if not scrollChild then
-        return
-    end
-
-    local existingFrame = parentFrame.CESettingsFrame
-    local existingCheckbox = parentFrame.CESettingsCheckbox
-
-    local function FindChildByName(parent, name)
-        if not parent or not name then
-            return nil
-        end
-        local children = { parent:GetChildren() }
-        for i = 1, table.getn(children) do
-            local child = children[i]
-            if child and child.GetName and child:GetName() == name then
-                return child
-            end
-        end
-        return nil
-    end
-
-    local anchor = FindChildByName(scrollChild, "ConsumesManager_ShowUseButtonFrame")
-        or FindChildByName(scrollChild, "ConsumesManager_EnableCategoriesFrame")
-        or scrollChild
-
-    local checkboxFrame = existingFrame or CreateFrame("Frame", nil, scrollChild)
-    checkboxFrame:SetParent(scrollChild)
-    checkboxFrame:ClearAllPoints()
-    local baseWidth = (type(WindowWidth) == "number" and WindowWidth)
-        or (parentFrame and parentFrame.GetWidth and parentFrame:GetWidth())
-        or (scrollChild and scrollChild.GetWidth and scrollChild:GetWidth())
-        or 480
-    if baseWidth < 200 then
-        baseWidth = 200
-    end
-    checkboxFrame:SetWidth(baseWidth - 10)
-    checkboxFrame:SetHeight(18)
-
-    if anchor and anchor ~= scrollChild then
-        checkboxFrame:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, 0)
-    else
-        checkboxFrame:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -20)
-    end
-
-    checkboxFrame:EnableMouse(true)
-
-    local checkbox = existingCheckbox or CreateFrame("CheckButton", nil, checkboxFrame)
-    checkbox:SetParent(checkboxFrame)
-    checkbox:ClearAllPoints()
-    checkbox:SetWidth(16)
-    checkbox:SetHeight(16)
-    checkbox:SetPoint("LEFT", checkboxFrame, "LEFT", 0, 0)
-    checkbox:SetNormalTexture("Interface\\Buttons\\UI-CheckBox-Up")
-    checkbox:SetPushedTexture("Interface\\Buttons\\UI-CheckBox-Down")
-    checkbox:SetHighlightTexture("Interface\\Buttons\\UI-CheckBox-Highlight")
-    checkbox:SetCheckedTexture("Interface\\Buttons\\UI-CheckBox-Check")
-    checkbox:SetChecked(ConsumesManager_Options.showColdEmbrace)
-
-    local label = checkboxFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    label:SetPoint("LEFT", checkbox, "RIGHT", 4, 0)
-    label:SetText("Enable Cold Embrace extension")
-    label:SetJustifyH("LEFT")
-
-    checkbox:SetScript("OnClick", function()
-        local checked = checkbox:GetChecked()
-        local wasEnabled = ConsumesManager_Options.showColdEmbrace and true or false
-        local autoSelect = (ConsumesManager_Options and ConsumesManager_Options.ceAutoSelectClass ~= false) and true or false
-
-        if checked and not wasEnabled then
-            ConsumesManager_Options.showColdEmbrace = true
-            CE_InjectItemlist()
-            if autoSelect then
-                CE_SetClassDropdownToCurrent()
-            end
-            CE_SetRaidDropdownToNaxxramas()
-            CE_UpdateFooterText()
-        elseif not checked and wasEnabled then
-            ConsumesManager_Options.showColdEmbrace = false
-            CE_ResetDropdownSelections()
-            CE_RemoveInjectedItemlist()
-            if type(CE_ClosePresetConfigWindow) == "function" then
-                CE_ClosePresetConfigWindow()
-            end
-            CE_UpdateFooterText()
-        else
-            ConsumesManager_Options.showColdEmbrace = checked and true or false
-            CE_UpdateFooterText()
-        end
-        if type(ConsumesManager_UpdatePresetsConsumables) == "function" then
-            ConsumesManager_UpdatePresetsConsumables()
-        end
-        CE_UpdateCETabEnabledState()
-    end)
-
-    checkboxFrame:SetScript("OnMouseDown", function()
-        checkbox:Click()
-    end)
-
-    parentFrame.CESettingsFrame = checkboxFrame
-    parentFrame.CESettingsCheckbox = checkbox
-
-    if type(ConsumesManager_UpdateSettingsScrollBar) == "function" then
-        ConsumesManager_UpdateSettingsScrollBar()
-    end
-end
-
 local CE_UpdateCETabEnabledState
 
 local function CE_CreateCETabCheckbox(parentFrame)
@@ -345,10 +246,7 @@ local function CE_CreateCETabCheckbox(parentFrame)
     checkbox:SetWidth(16)
     checkbox:SetHeight(16)
     checkbox:SetPoint("LEFT", checkboxFrame, "LEFT", 0, 0)
-    checkbox:SetNormalTexture("Interface\\Buttons\\UI-CheckBox-Up")
-    checkbox:SetPushedTexture("Interface\\Buttons\\UI-CheckBox-Down")
-    checkbox:SetHighlightTexture("Interface\\Buttons\\UI-CheckBox-Highlight")
-    checkbox:SetCheckedTexture("Interface\\Buttons\\UI-CheckBox-Check")
+    CE_StyleCheckbox(checkbox)
     checkbox:SetChecked(ConsumesManager_Options.showColdEmbrace)
 
     local label = checkboxFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -529,10 +427,7 @@ local function CE_CreateCETabCheckbox(parentFrame)
     autoBox:SetWidth(16)
     autoBox:SetHeight(16)
     autoBox:SetPoint("LEFT", autoFrame, "LEFT", 0, 0)
-    autoBox:SetNormalTexture("Interface\\Buttons\\UI-CheckBox-Up")
-    autoBox:SetPushedTexture("Interface\\Buttons\\UI-CheckBox-Down")
-    autoBox:SetHighlightTexture("Interface\\Buttons\\UI-CheckBox-Highlight")
-    autoBox:SetCheckedTexture("Interface\\Buttons\\UI-CheckBox-Check")
+    CE_StyleCheckbox(autoBox)
     autoBox:SetChecked(ConsumesManager_Options.ceAutoSelectClass ~= false)
 
     local autoLabel = parentFrame.CEAutoSelectLabel

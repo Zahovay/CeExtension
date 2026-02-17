@@ -1,15 +1,14 @@
 -- CE hooks
 
-local orig_CreateSettingsContent = ConsumesManager_CreateSettingsContent
-if type(orig_CreateSettingsContent) == "function" then
-    function ConsumesManager_CreateSettingsContent(parentFrame)
-        orig_CreateSettingsContent(parentFrame)
-    end
-end
-
 local orig_UpdatePresetsConsumables = ConsumesManager_UpdatePresetsConsumables
 if type(orig_UpdatePresetsConsumables) == "function" then
     function ConsumesManager_UpdatePresetsConsumables()
+        -- Only do heavy UI work when the main window is actually visible.
+        -- This prevents background events (e.g. sync updates) from doing full
+        -- Presets re-renders while the UI is closed.
+        if ConsumesManager_MainFrame and ConsumesManager_MainFrame.IsShown and not ConsumesManager_MainFrame:IsShown() then
+            return
+        end
         if ConsumesManager_Options.showColdEmbrace then
             -- In CE mode, render Presets with owned/required counts.
             if type(CE_UpdatePresetsConsumables) == "function" then
