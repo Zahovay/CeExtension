@@ -87,170 +87,6 @@ function CE_NormalizeRaidName(raidName)
     return raidName
 end
 
-function CE_GetPlannerStore()
-    ConsumesManager_Options = ConsumesManager_Options or {}
-    ConsumesManager_Options.cePlanner = ConsumesManager_Options.cePlanner or {}
-    return ConsumesManager_Options.cePlanner
-end
-
-local function CE_BuildLowerNameToId(nameToId)
-    local lower = {}
-    if type(nameToId) ~= "table" then
-        return lower
-    end
-    for itemName, itemId in pairs(nameToId) do
-        if type(itemName) == "string" then
-            lower[string.lower(itemName)] = itemId
-        end
-    end
-    return lower
-end
-
-local function CE_GetItemIdByNameInsensitive(nameToId, lowerNameToId, itemName)
-    if type(itemName) ~= "string" or itemName == "" then
-        return nil
-    end
-    if type(nameToId) == "table" then
-        local direct = nameToId[itemName]
-        if direct then
-            return direct
-        end
-    end
-    if type(lowerNameToId) == "table" then
-        return lowerNameToId[string.lower(itemName)]
-    end
-    return nil
-end
-
-function CE_BuildPlannerDefaultsFromData(raidName)
-    raidName = CE_NormalizeRaidName(raidName)
-    local defaults = {}
-
-    local data = RaidConsumables and RaidConsumables.Data
-    if not data then
-        return defaults
-    end
-
-    -- Today Data.lua is Naxx-focused; keep other raids empty by default.
-    if raidName ~= "Naxxramas" then
-        return defaults
-    end
-
-    local nameToId = consumablesNameToID or {}
-    local lowerNameToId = CE_BuildLowerNameToId(nameToId)
-
-    local function applyEntry(entry, status)
-        local names = nil
-        local required = 1
-
-        if type(entry) == "table" then
-            names = entry.names or entry
-            required = tonumber(entry.required) or 1
-        else
-            names = { entry }
-            required = 1
-        end
-
-        if type(names) ~= "table" then
-            names = { names }
-        end
-
-        local firstResolved = false
-        for i = 1, table.getn(names) do
-            local name = names[i]
-            local itemId = CE_GetItemIdByNameInsensitive(nameToId, lowerNameToId, name)
-            if itemId then
-                defaults[itemId] = defaults[itemId] or {}
-                defaults[itemId].amount = required
-                defaults[itemId].status = status
-                if not firstResolved then
-                    defaults[itemId].enabled = true
-                    firstResolved = true
-                else
-                    defaults[itemId].enabled = defaults[itemId].enabled or false
-                end
-            end
-        end
-    end
-
-    if type(data.MandatoryGroups) == "table" then
-        for i = 1, table.getn(data.MandatoryGroups) do
-            applyEntry(data.MandatoryGroups[i], "mandatory")
-        end
-    end
-    if type(data.OptionalGroups) == "table" then
-        for i = 1, table.getn(data.OptionalGroups) do
-            applyEntry(data.OptionalGroups[i], "optional")
-        end
-    end
-
-    return defaults
-end
-
-function CE_EnsurePlannerDefaultsForRaid(raidName)
-    raidName = CE_NormalizeRaidName(raidName)
-    local store = CE_GetPlannerStore()
-    store[raidName] = store[raidName] or {}
-    local raidStore = store[raidName]
-
-    if raidStore.__initialized then
-        return raidStore
-    end
-
-    local defaults = CE_BuildPlannerDefaultsFromData(raidName)
-    for itemId, entry in pairs(defaults) do
-        if type(itemId) == "number" and type(entry) == "table" then
-            if type(raidStore[itemId]) ~= "table" then
-                raidStore[itemId] = {}
-            end
-            local target = raidStore[itemId]
-            if target.enabled == nil then
-                target.enabled = entry.enabled and true or false
-            end
-            if target.amount == nil then
-                target.amount = tonumber(entry.amount) or 0
-            end
-            if target.status == nil then
-                target.status = entry.status
-            end
-        end
-    end
-
-    raidStore.__initialized = true
-    return raidStore
-end
-
-function CE_GetPlannerRaidRequirements(raidName)
-    raidName = CE_NormalizeRaidName(raidName)
-    local raidStore = CE_EnsurePlannerDefaultsForRaid(raidName)
-    return raidStore
-end
-
-function CE_GetConsumableNameById(itemId)
-    if not itemId then
-        return nil
-    end
-    if type(consumablesList) == "table" then
-        local name = consumablesList[itemId]
-        if type(name) == "string" and name ~= "" then
-            return name
-        end
-    end
-    if type(consumablesCategories) == "table" then
-        for _, items in pairs(consumablesCategories) do
-            if type(items) == "table" then
-                for i = 1, table.getn(items) do
-                    local item = items[i]
-                    if item and item.id == itemId and type(item.name) == "string" and item.name ~= "" then
-                        return item.name
-                    end
-                end
-            end
-        end
-    end
-    return nil
-end
-
 -- =========================
 -- CE Preset Tab Data Model
 -- =========================
@@ -264,39 +100,6 @@ end
 --   }
 --
 -- The Presets UI then works unchanged, and the planner edits this same store.
-
-local function CE_BuildConsumablesNameToId()
-    local nameToId = {}
-    local lowerToId = {}
-    if type(consumablesCategories) ~= "table" then
-        return nameToId, lowerToId
-    end
-    for _, items in pairs(consumablesCategories) do
-        if type(items) == "table" then
-            for i = 1, table.getn(items) do
-                local item = items[i]
-                if item and item.id and type(item.name) == "string" and item.name ~= "" then
-                    nameToId[item.name] = item.id
-                    lowerToId[string.lower(item.name)] = item.id
-                end
-            end
-        end
-    end
-    return nameToId, lowerToId
-end
-
-local function CE_GetItemIdByName(nameToId, lowerToId, itemName)
-    if type(itemName) ~= "string" or itemName == "" then
-        return nil
-    end
-    if type(nameToId) == "table" and nameToId[itemName] then
-        return nameToId[itemName]
-    end
-    if type(lowerToId) == "table" then
-        return lowerToId[string.lower(itemName)]
-    end
-    return nil
-end
 
 local function CE_SpecToFallbackPresetClass(specName)
     if type(specName) ~= "string" or specName == "" then
@@ -415,53 +218,37 @@ local function CE_BuildPresetFromRaidConsumablesData(specName)
         return ids, req
     end
 
-    local nameToId, lowerToId = CE_BuildConsumablesNameToId()
-
     local function applyEntries(entries, status)
         if type(entries) ~= "table" then
             return
         end
         for i = 1, table.getn(entries) do
             local entry = entries[i]
-            local names = nil
-            local required = 1
             if type(entry) == "table" then
-                names = entry.names or entry
-                required = tonumber(entry.required) or 1
-            else
-                names = { entry }
-                required = 1
-            end
-            if type(names) ~= "table" then
-                names = { names }
-            end
+                local entryIds = type(entry.ids) == "table" and entry.ids or {}
+                local required = tonumber(entry.required) or 1
 
-            local resolved = {}
-            for j = 1, table.getn(names) do
-                local itemName = names[j]
-                local itemId = CE_GetItemIdByName(nameToId, lowerToId, itemName)
-                if itemId then
-                    table.insert(resolved, itemId)
+                local primary = nil
+                for j = 1, table.getn(entryIds) do
+                    local itemId = tonumber(entryIds[j])
+                    if itemId then
+                        req[itemId] = req[itemId] or {}
+                        if req[itemId].amount == nil then
+                            req[itemId].amount = required
+                        end
+                        if req[itemId].status == nil then
+                            req[itemId].status = status
+                        end
+                        if not primary then
+                            primary = itemId
+                        end
+                    end
                 end
-            end
 
-            -- Store requirements for all resolved alternatives.
-            for j = 1, table.getn(resolved) do
-                local itemId = resolved[j]
-                req[itemId] = req[itemId] or {}
-                if req[itemId].amount == nil then
-                    req[itemId].amount = required
+                if primary and not seen[primary] then
+                    table.insert(ids, primary)
+                    seen[primary] = true
                 end
-                if req[itemId].status == nil then
-                    req[itemId].status = status
-                end
-            end
-
-            -- But include only the first resolved item in the Presets-tab list by default.
-            local primary = resolved[1]
-            if primary and not seen[primary] then
-                table.insert(ids, primary)
-                seen[primary] = true
             end
         end
     end

@@ -207,19 +207,14 @@ function CE_UpdatePresetsConsumables()
 
     parentFrame.messageLabel:Hide()
 
-    -- Build an id->name map once per refresh (stable, bounded, no long-lived cache).
-    local idToName = {}
-    if type(consumablesCategories) == "table" then
-        for _, items in pairs(consumablesCategories) do
-            if type(items) == "table" then
-                for i = 1, table.getn(items) do
-                    local it = items[i]
-                    if it and type(it.id) == "number" and type(it.name) == "string" and it.name ~= "" then
-                        idToName[it.id] = it.name
-                    end
-                end
+    local function CE_GetName(itemId)
+        if type(consumablesList) == "table" then
+            local name = consumablesList[itemId]
+            if type(name) == "string" and name ~= "" then
+                return name
             end
         end
+        return nil
     end
 
     local realmName = GetRealmName()
@@ -268,7 +263,7 @@ function CE_UpdatePresetsConsumables()
                 if entryStatus == status then
                     local required = entry and tonumber(entry.amount) or 0
                     if required < 0 then required = 0 end
-                    local name = idToName[itemId] or ("Item " .. tostring(itemId))
+                    local name = CE_GetName(itemId) or ("Item " .. tostring(itemId))
                     local totalCount = CE_GetTotalCount(itemId)
                     table.insert(items, { id = itemId, name = name, required = required, totalCount = totalCount })
                 end

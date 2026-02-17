@@ -47,23 +47,14 @@ local function CE_GetPlannerItems(raidName)
     local results = {}
     local seen = {}
 
-    -- Build a local id->name lookup once (stable + no long-lived cache).
-    local idToName = {}
-    if type(consumablesCategories) == "table" then
-        for _, items in pairs(consumablesCategories) do
-            if type(items) == "table" then
-                for i = 1, table.getn(items) do
-                    local it = items[i]
-                    if it and type(it.id) == "number" and type(it.name) == "string" and it.name ~= "" then
-                        idToName[it.id] = it.name
-                    end
-                end
+    local function getName(itemId)
+        if type(consumablesList) == "table" then
+            local name = consumablesList[itemId]
+            if type(name) == "string" then
+                return name
             end
         end
-    end
-
-    local function getName(itemId)
-        return idToName[itemId] or ""
+        return ""
     end
 
     -- Include any items present in requirements metadata for this (class, raid)

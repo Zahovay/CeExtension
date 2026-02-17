@@ -32,9 +32,6 @@ local function CE_AddToConsumablesLookups(item)
     if type(consumablesList) == "table" then
         consumablesList[item.id] = item.name
     end
-    if type(consumablesNameToID) == "table" then
-        consumablesNameToID[item.name] = item.id
-    end
     if type(consumablesTexture) == "table" then
         consumablesTexture[item.id] = item.texture
     end
@@ -52,9 +49,6 @@ local function CE_RemoveFromConsumablesLookups(item)
     end
     if type(consumablesList) == "table" then
         consumablesList[item.id] = nil
-    end
-    if type(consumablesNameToID) == "table" then
-        consumablesNameToID[item.name] = nil
     end
     if type(consumablesTexture) == "table" then
         consumablesTexture[item.id] = nil
