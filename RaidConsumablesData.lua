@@ -109,7 +109,7 @@ RC.Data.AdditionalItems = {
         id = 19440,
         name = "Powerful Anti-Venom",
         category = "Protection Potions",
-        mats = { "Looted or purchased" },
+        mats = { "1x Huge Venom Sac" },
         texture = "Interface\\Icons\\INV_DRINK_14",
         description = "Cures poison effects."
     },
@@ -117,9 +117,47 @@ RC.Data.AdditionalItems = {
         id = 15723,
         name = "Tea with Sugar",
         category = "Protection Potions",
-        mats = { "Looted or purchased" },
+        mats = { "Quest reward in Winterspring" },
         texture = "Interface\\Icons\\INV_DRINK_15",
-        description = "Restores health and mana."
+        description = "Restores 525 to 876 health and 810 to 1351 mana."
+    },
+
+    -- Turtle WoW concoctions (not present in base ConsumesManager item list)
+    {
+        id = 47412,
+        name = "Concoction of the Arcane Giant",
+        category = "Elixirs",
+        mats = {
+            "1x Elixir of Giants",
+            "1x Greater Arcane Elixir",
+            "6x Purple Lotus",
+        },
+        texture = "Interface\\Icons\\inv_yellow_purple_elixir_2",
+        description = "Increases spell damage by up to 35 and Strength by 25 for 1 hour."
+    },
+    {
+        id = 47414,
+        name = "Concoction of the Dreamwater",
+        category = "Elixirs",
+        mats = {
+            "1x Winterfall Firewater",
+            "1x Dreamtonic",
+            "6x Sungrass",
+        },
+        texture = "Interface\\Icons\\inv_green_pink_elixir_1",
+        description = "Increases spell damage by up to 35 and Attack Power by 35 for 20 minutes."
+    },
+    {
+        id = 47410,
+        name = "Concoction of the Emerald Mongoose",
+        category = "Elixirs",
+        mats = {
+            "1x Elixir of the Mongoose",
+            "1x Dreamshard Elixir",
+            "6x Wildvine",
+        },
+        texture = "Interface\\Icons\\inv_blue_gold_elixir_2",
+        description = "Increases spell damage by up to 15, Agility by 25, and critical strike chance by 2% for 1 hour."
     },
     {
         id = 22682,
@@ -127,7 +165,7 @@ RC.Data.AdditionalItems = {
         category = "Protection Potions",
         mats = { "Looted or purchased" },
         texture = "Interface\\Icons\\INV_MISC_RUNE_09",
-        description = "Restores health and mana."
+        description = "Absorbs 1500 to 2501 fire damage. Lasts 1 hour."
     },
     {
         id = 13810,
@@ -135,7 +173,7 @@ RC.Data.AdditionalItems = {
         category = "Food Buffs",
         mats = { "Looted or purchased" },
         texture = "Interface\\Icons\\INV_Misc_Food_41",
-        description = "Restores health over time."
+        description = "Restores 1933.2 health over 27 sec. Must remain seated while eating. Also increases your Strength by 10 for 10 minutes."
     },
     {
         id = 51711,
