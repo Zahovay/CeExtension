@@ -192,6 +192,39 @@ local function CE_BuyTabSyncPresetDropdowns()
     end
 end
 
+local function CE_BuyTabGetStore()
+    ConsumesManager_Options = ConsumesManager_Options or {}
+    ConsumesManager_Options.ceBuyTab = ConsumesManager_Options.ceBuyTab or {}
+
+    local store = ConsumesManager_Options.ceBuyTab
+    if type(store.boughtMarks) ~= "table" then
+        store.boughtMarks = {}
+    end
+    if type(store.boughtBaseCounts) ~= "table" then
+        store.boughtBaseCounts = {}
+    end
+    return store
+end
+
+local function CE_BuyTabClearBoughtMarks()
+    local store = CE_BuyTabGetStore()
+    store.boughtMarks = {}
+    store.boughtBaseCounts = {}
+end
+
+local function CE_BuyTabGetPlayerCount(itemId)
+    if type(itemId) ~= "number" then
+        return 0
+    end
+    if type(GetItemCount) == "function" then
+        local c = GetItemCount(itemId)
+        if type(c) == "number" then
+            return c
+        end
+    end
+    return 0
+end
+
 local function CE_CreateBuyTabContent(tabIndex)
     if not ConsumesManager_MainFrame then
         return nil
@@ -272,6 +305,7 @@ local function CE_CreateBuyTabContent(tabIndex)
                     ConsumesManager_UpdatePresetsConsumables()
                 end
                 CE_BuyTabSyncPresetDropdowns()
+                CE_BuyTabClearBoughtMarks()
                 if type(CE_UpdateBuyConsumables) == "function" then
                     CE_UpdateBuyConsumables()
                 end
@@ -301,6 +335,7 @@ local function CE_CreateBuyTabContent(tabIndex)
                     ConsumesManager_UpdatePresetsConsumables()
                 end
                 CE_BuyTabSyncPresetDropdowns()
+                CE_BuyTabClearBoughtMarks()
                 if type(CE_UpdateBuyConsumables) == "function" then
                     CE_UpdateBuyConsumables()
                 end
@@ -548,6 +583,16 @@ local function CE_AddBuyItemRow(scrollChild, index, lineHeight, item, parentFram
     buyButton:SetText("Search")
     buyButton:Show()
 
+    local boughtCheck = frame.boughtCheck
+    if not boughtCheck then
+        boughtCheck = CreateFrame("CheckButton", nil, frame, "UICheckButtonTemplate")
+        frame.boughtCheck = boughtCheck
+        boughtCheck:SetWidth(16)
+        boughtCheck:SetHeight(16)
+        boughtCheck:SetPoint("LEFT", frame, "LEFT", 0, 0)
+    end
+    boughtCheck:Show()
+
     local label = frame.label
     if not label then
         label = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -556,7 +601,7 @@ local function CE_AddBuyItemRow(scrollChild, index, lineHeight, item, parentFram
         label:SetJustifyH("LEFT")
     end
     label:ClearAllPoints()
-    label:SetPoint("LEFT", frame, "LEFT", 0, 0)
+    label:SetPoint("LEFT", boughtCheck, "RIGHT", 2, 0)
     label:SetPoint("RIGHT", buyButton, "LEFT", -4, 0)
 
     local hit = frame.hit
@@ -566,7 +611,7 @@ local function CE_AddBuyItemRow(scrollChild, index, lineHeight, item, parentFram
         hit:EnableMouse(true)
     end
     hit:ClearAllPoints()
-    hit:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
+    hit:SetPoint("TOPLEFT", boughtCheck, "TOPRIGHT", 2, 0)
     hit:SetPoint("BOTTOMRIGHT", buyButton, "BOTTOMLEFT", -4, 0)
     hit:Show()
     if frame.GetFrameLevel and hit.SetFrameLevel and buyButton.SetFrameLevel then
@@ -605,6 +650,55 @@ local function CE_AddBuyItemRow(scrollChild, index, lineHeight, item, parentFram
 
     buyButton:SetScript("OnLeave", hit:GetScript("OnLeave"))
 
+    do
+        local store = CE_BuyTabGetStore()
+        local isMarked = store.boughtMarks and store.boughtMarks[item.id]
+        boughtCheck:SetChecked(isMarked and true or false)
+
+        local function CE_ApplyBoughtMark(now)
+            local s = CE_BuyTabGetStore()
+            local id = item.id
+            if type(id) ~= "number" then
+                return
+            end
+
+            if now then
+                s.boughtMarks[id] = true
+                s.boughtBaseCounts[id] = CE_BuyTabGetPlayerCount(id)
+            else
+                s.boughtMarks[id] = nil
+                s.boughtBaseCounts[id] = nil
+            end
+
+            if type(CE_UpdateBuyConsumables) == "function" then
+                CE_UpdateBuyConsumables()
+            end
+        end
+
+        boughtCheck:SetScript("OnEnter", function()
+            if GameTooltip and GameTooltip.SetOwner and GameTooltip.SetText then
+                GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
+                GameTooltip:SetText("Mark as bought (temporary)", 1, 1, 1)
+                if GameTooltip.AddLine then
+                    GameTooltip:AddLine("Moves this item to the end of the list.", 0.8, 0.8, 0.8, true)
+                    GameTooltip:AddLine("Clears automatically when items appear in your bags.", 0.8, 0.8, 0.8, true)
+                end
+                GameTooltip:Show()
+            end
+        end)
+        boughtCheck:SetScript("OnLeave", function()
+            if GameTooltip and GameTooltip.Hide then
+                GameTooltip:Hide()
+            end
+        end)
+
+        boughtCheck:SetScript("OnClick", function()
+            CE_ApplyBoughtMark(this:GetChecked() and true or false)
+        end)
+
+        frame.CE_ApplyBoughtMark = CE_ApplyBoughtMark
+    end
+
     local function CE_BuyRowTriggerSearch()
         if type(CE_AuxTryUseItem) == "function" and CE_AuxTryUseItem(item.id, item.name) then
             return
@@ -632,7 +726,16 @@ local function CE_AddBuyItemRow(scrollChild, index, lineHeight, item, parentFram
     end)
 
     hit:SetScript("OnMouseDown", function()
-        if arg1 == "RightButton" then
+        if arg1 == "LeftButton" then
+            local now = boughtCheck and boughtCheck.GetChecked and (boughtCheck:GetChecked() and true or false) or false
+            now = not now
+            if boughtCheck and boughtCheck.SetChecked then
+                boughtCheck:SetChecked(now)
+            end
+            if frame.CE_ApplyBoughtMark then
+                frame.CE_ApplyBoughtMark(now)
+            end
+        elseif arg1 == "RightButton" then
             CE_BuyRowTriggerSearch()
         end
     end)
@@ -785,6 +888,63 @@ function CE_UpdateBuyConsumables()
         end
     end
 
+    -- Manual "bought" marks: move marked items to the bottom, and clear marks
+    -- once any marked item count increases in the player's bags.
+    do
+        local store = CE_BuyTabGetStore()
+        local marks = store and store.boughtMarks or nil
+        local base = store and store.boughtBaseCounts or nil
+
+        local function anyMarkClearedByBagUpdate()
+            if type(marks) ~= "table" or type(base) ~= "table" then
+                return false
+            end
+            for itemId, _ in pairs(marks) do
+                if type(itemId) == "number" then
+                    local cur = CE_BuyTabGetPlayerCount(itemId)
+                    local prev = tonumber(base[itemId]) or 0
+                    if cur > prev then
+                        return true
+                    end
+                end
+            end
+            return false
+        end
+
+        if anyMarkClearedByBagUpdate() then
+            CE_BuyTabClearBoughtMarks()
+            marks = nil
+        end
+
+        if type(marks) == "table" then
+            for i = 1, table.getn(missingMandatory) do
+                local it = missingMandatory[i]
+                it.isBought = (it and it.id and marks[it.id]) and true or false
+            end
+            for i = 1, table.getn(missingOptional) do
+                local it = missingOptional[i]
+                it.isBought = (it and it.id and marks[it.id]) and true or false
+            end
+        end
+    end
+
+    local boughtItems = {}
+    local function partitionBought(list)
+        local out = {}
+        for i = 1, table.getn(list) do
+            local it = list[i]
+            if it and it.isBought then
+                table.insert(boughtItems, it)
+            else
+                table.insert(out, it)
+            end
+        end
+        return out
+    end
+
+    missingMandatory = partitionBought(missingMandatory)
+    missingOptional = partitionBought(missingOptional)
+
     table.sort(missingMandatory, function(a, b)
         return (a.name or "") < (b.name or "")
     end)
@@ -793,9 +953,13 @@ function CE_UpdateBuyConsumables()
         return (a.name or "") < (b.name or "")
     end)
 
+    table.sort(boughtItems, function(a, b)
+        return (a.name or "") < (b.name or "")
+    end)
+
     local lineHeight = 18
     local index = 1
-    if table.getn(missingMandatory) == 0 and table.getn(missingOptional) == 0 then
+    if table.getn(missingMandatory) == 0 and table.getn(missingOptional) == 0 and table.getn(boughtItems) == 0 then
         if parentFrame.messageLabel then
             parentFrame.noItemsMessage = parentFrame.messageLabel
             parentFrame.noItemsMessage:SetText("|cff00ff00All preset items are fulfilled.|r")
@@ -817,6 +981,13 @@ function CE_UpdateBuyConsumables()
         index = CE_AddBuyGroupHeader(scrollChild, index, lineHeight, "Optional", parentFrame)
         for j = 1, table.getn(missingOptional) do
             index = CE_AddBuyItemRow(scrollChild, index, lineHeight, missingOptional[j], parentFrame)
+        end
+    end
+
+    if table.getn(boughtItems) > 0 then
+        index = CE_AddBuyGroupHeader(scrollChild, index, lineHeight, "Bought", parentFrame)
+        for j = 1, table.getn(boughtItems) do
+            index = CE_AddBuyItemRow(scrollChild, index, lineHeight, boughtItems[j], parentFrame)
         end
     end
 
