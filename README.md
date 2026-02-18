@@ -72,6 +72,9 @@ See [LICENSE](LICENSE).
 Buy tab:
 - Select Raid + Class (same selection as Presets).
 - The list contains only items where Required > 0 and Owned < Required.
+- Optional: tick the checkbox to "mark as bought" (temporary):
+   - Moves the item to the bottom under a "Bought" section.
+   - Clears automatically when items start appearing in your bags.
 - Click “Search” (or right-click the row):
    - With aux open: performs an exact aux search.
    - Without aux: searches in the Blizzard AH UI if the Auction House is open.
@@ -79,7 +82,7 @@ Buy tab:
 <p>
    <img src="images/aux_integration.png" alt="Buy tab - aux integration">
    <br>
-   <em>Buy tab search supports aux (when open) and Blizzard AH fallback.</em>
+   <em>Buy tab: mark items as bought, plus aux search (when open) and Blizzard AH fallback.</em>
 </p>
 
 Planner:
@@ -103,4 +106,12 @@ Optional configuration:
 ## How to Switch On/Off
 - On: CE tab -> check "Enable Cold Embrace extension".
 - Off: CE tab -> uncheck it. The extension restores the original base addon state (CE tab remains available).
+
+## Release notes
+
+### 0.3.0
+- Added Buy tab for missing preset consumables, with one-click search (aux when open, Blizzard AH fallback).
+- Added “mark as bought” checkbox that moves items into a Bought section and auto-clears when items appear in your bags.
+- Updated materials/metadata for existing CE additional consumables (e.g. Turtle WoW concoctions shown in the Planner/Presets).
+- Improved UI usability (wider window mode, presets spacing/status tweaks) and stability (no heavy updates while the main window is closed).
 

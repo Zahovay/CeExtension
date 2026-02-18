@@ -2,6 +2,32 @@
 
 CE_TooltipAllowed = CE_TooltipAllowed or {}
 
+local CE_PRESETS_SCROLLFRAME_TOP_Y_DEFAULT = -40
+local CE_PRESETS_SCROLLFRAME_TOP_Y_CE = -20
+
+function CE_ApplyPresetsTabSpacing(enabled)
+    local scrollFrame = getglobal("ConsumesManager_PresetsScrollFrame")
+    if not scrollFrame or type(scrollFrame.ClearAllPoints) ~= "function" then
+        return
+    end
+
+    local classDropdown = getglobal("ConsumesManager_PresetsClassDropdown")
+    if not classDropdown then
+        return
+    end
+
+    local parentFrame = scrollFrame:GetParent()
+    if not parentFrame then
+        return
+    end
+
+    local topY = enabled and CE_PRESETS_SCROLLFRAME_TOP_Y_CE or CE_PRESETS_SCROLLFRAME_TOP_Y_DEFAULT
+
+    scrollFrame:ClearAllPoints()
+    scrollFrame:SetPoint("TOPLEFT", classDropdown, "BOTTOMLEFT", -135, topY)
+    scrollFrame:SetPoint("BOTTOMRIGHT", parentFrame, "BOTTOMRIGHT", -25, -5)
+end
+
 local function CE_ClearPresets(parentFrame)
     if not parentFrame then
         return
@@ -172,9 +198,17 @@ local function CE_AddItemRow(scrollChild, index, lineHeight, item, showUseButton
 end
 
 function CE_UpdatePresetsConsumables()
+    if not ConsumesManager_MainFrame or not ConsumesManager_MainFrame.IsShown or not ConsumesManager_MainFrame:IsShown() then
+        return
+    end
+
     local parentFrame = ConsumesManager_MainFrame and ConsumesManager_MainFrame.tabs and ConsumesManager_MainFrame.tabs[3]
     if not parentFrame then
         return
+    end
+
+    if type(ConsumesManager_Options) == "table" then
+        CE_ApplyPresetsTabSpacing(ConsumesManager_Options.showColdEmbrace and true or false)
     end
 
     local scrollChild = parentFrame.scrollChild
@@ -318,9 +352,12 @@ function CE_UpdatePresetsConsumables()
         return requiredTotal, ownedTotal
     end
 
-    local function CE_IsPrepared(mandatoryItems)
-        for i = 1, table.getn(mandatoryItems) do
-            local item = mandatoryItems[i]
+    local function CE_IsPrepared(items)
+        if type(items) ~= "table" then
+            return true
+        end
+        for i = 1, table.getn(items) do
+            local item = items[i]
             if item and item.required and item.required > 0 and item.totalCount < item.required then
                 return false
             end
@@ -337,7 +374,21 @@ function CE_UpdatePresetsConsumables()
     local optionalItems = CE_BuildPresetItemsForStatus("optional")
 
     if table.getn(mandatoryItems) > 0 or table.getn(optionalItems) > 0 then
-        local prepared = CE_IsPrepared(mandatoryItems)
+        local mandatoryPrepared = CE_IsPrepared(mandatoryItems)
+        local optionalPrepared = CE_IsPrepared(optionalItems)
+
+        local statusText = "Not prepared for " .. raidName
+        local statusColor = "red"
+        if mandatoryPrepared then
+            if optionalPrepared then
+                statusText = "Fully prepared for " .. raidName
+                statusColor = "green"
+            else
+                statusText = "Mostly prepared for " .. raidName
+                statusColor = "orange"
+            end
+        end
+
         index = index + 1
         local statusFrame = CreateFrame("Frame", "ConsumesManager_CEStatusFrame" .. index, scrollChild)
         statusFrame:SetWidth(scrollChild:GetWidth() - 10)
@@ -346,11 +397,13 @@ function CE_UpdatePresetsConsumables()
         statusFrame:Show()
 
         local statusLabel = statusFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-        statusLabel:SetPoint("LEFT", statusFrame, "LEFT", 0, 0)
-        statusLabel:SetText(prepared and ("Fully prepared for " .. raidName) or ("Not prepared for " .. raidName))
+        statusLabel:SetPoint("LEFT", statusFrame, "LEFT", 0, 1)
+        statusLabel:SetText(statusText)
         statusLabel:SetJustifyH("LEFT")
-        if prepared then
+        if statusColor == "green" then
             statusLabel:SetTextColor(0, 1, 0)
+        elseif statusColor == "orange" then
+            statusLabel:SetTextColor(1, 0.4, 0)
         else
             statusLabel:SetTextColor(1, 0, 0)
         end

@@ -1,5 +1,116 @@
 -- CE UI helpers
 
+local CE_WIDE_WINDOW_WIDTH = 420
+local CE_WindowWidthBackup = nil
+
+local function CE_ClampWidthToScreen(width)
+    if type(width) ~= "number" then
+        return width
+    end
+    local maxWidth = nil
+    if UIParent and UIParent.GetWidth then
+        local w = UIParent:GetWidth()
+        if type(w) == "number" and w > 0 then
+            maxWidth = w - 60
+        end
+    end
+    if type(maxWidth) == "number" and maxWidth > 200 then
+        if width > maxWidth then
+            width = maxWidth
+        end
+    end
+    if width < 200 then
+        width = 200
+    end
+    return width
+end
+
+function CE_ApplyWideWindow(enabled)
+    if type(WindowWidth) == "number" and not CE_WindowWidthBackup then
+        CE_WindowWidthBackup = WindowWidth
+    end
+    if not CE_WindowWidthBackup then
+        CE_WindowWidthBackup = 350
+    end
+
+    local desiredWidth = enabled and CE_WIDE_WINDOW_WIDTH or CE_WindowWidthBackup
+    desiredWidth = CE_ClampWidthToScreen(desiredWidth)
+    if type(desiredWidth) ~= "number" then
+        return
+    end
+
+    WindowWidth = desiredWidth
+
+    local mainFrame = ConsumesManager_MainFrame
+    if not mainFrame or type(mainFrame.SetWidth) ~= "function" then
+        return
+    end
+
+    mainFrame:SetWidth(desiredWidth)
+
+    if mainFrame.tabs and type(mainFrame.tabs) == "table" then
+        for tabIndex, content in pairs(mainFrame.tabs) do
+            if content and type(content.SetWidth) == "function" then
+                content:SetWidth(desiredWidth - 50)
+
+                if content.scrollChild and type(content.scrollChild.SetWidth) == "function" then
+                    local childWidth = nil
+                    if tabIndex == 3 or tabIndex == 7 then
+                        childWidth = (content.GetWidth and content:GetWidth() or 0) - 40
+                    elseif tabIndex == 1 or tabIndex == 2 or tabIndex == 4 then
+                        childWidth = desiredWidth - 10
+                    end
+                    if type(childWidth) == "number" and childWidth > 50 then
+                        content.scrollChild:SetWidth(childWidth)
+                    end
+                end
+            end
+        end
+    end
+
+    local trackerSearchBox = _G and _G["ConsumesManager_TrackerSearchBox"]
+    if trackerSearchBox and type(trackerSearchBox.SetWidth) == "function" then
+        trackerSearchBox:SetWidth(desiredWidth - 50)
+    end
+
+    -- Items tab search box is named ConsumesManager_SearchBox
+    local itemsSearchBox = _G and _G["ConsumesManager_SearchBox"]
+    if itemsSearchBox and type(itemsSearchBox.SetWidth) == "function" then
+        itemsSearchBox:SetWidth(desiredWidth - 50)
+    end
+
+    -- Items tab rows are created once; widen them explicitly.
+    local itemsTab = mainFrame.tabs and mainFrame.tabs[2]
+    if itemsTab and itemsTab.categoryInfo and type(itemsTab.categoryInfo) == "table" then
+        for _, categoryInfo in ipairs(itemsTab.categoryInfo) do
+            if categoryInfo and categoryInfo.Items and type(categoryInfo.Items) == "table" then
+                for _, itemInfo in ipairs(categoryInfo.Items) do
+                    local itemFrame = itemInfo and itemInfo.frame
+                    if itemFrame and type(itemFrame.SetWidth) == "function" then
+                        itemFrame:SetWidth(desiredWidth - 10)
+                    end
+                end
+            end
+        end
+    end
+
+    -- If the window is visible, refresh key renders so the new widths are reflected immediately.
+    if mainFrame.IsShown and mainFrame:IsShown() then
+        if type(ConsumesManager_UpdateManagerContent) == "function" then
+            ConsumesManager_UpdateManagerContent()
+        end
+        if type(ConsumesManager_UpdatePresetsConsumables) == "function" then
+            ConsumesManager_UpdatePresetsConsumables()
+        end
+        if type(ConsumesManager_UpdateSettingsContent) == "function" then
+            ConsumesManager_UpdateSettingsContent()
+        end
+        if type(CE_UpdateBuyConsumables) == "function" then
+            CE_UpdateBuyConsumables()
+        end
+    end
+end
+
 local function CE_StyleCheckbox(checkbox)
     if not checkbox then
         return
@@ -672,6 +783,14 @@ CE_UpdateCETabEnabledState = function()
                 content.CEPresetConfigButton:SetAlpha(0.6)
             end
         end
+    end
+
+    if type(CE_ApplyPresetsTabSpacing) == "function" then
+        CE_ApplyPresetsTabSpacing(enabled)
+    end
+
+    if type(CE_ApplyWideWindow) == "function" then
+        CE_ApplyWideWindow(enabled)
     end
 end
 

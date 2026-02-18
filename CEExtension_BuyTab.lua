@@ -29,8 +29,9 @@ local function CE_CreateBuyTabButton(tabIndex, xOffset, tooltipText)
 
     local icon = tab:CreateTexture(nil, "ARTWORK")
     icon:SetTexture("Interface\\Icons\\INV_Misc_Coin_02")
-    icon:SetWidth(22)
-    icon:SetHeight(22)
+    -- Match the visual weight of other CM tab icons (fill the 36px tab).
+    icon:SetWidth(32)
+    icon:SetHeight(32)
     icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
     icon:SetPoint("CENTER", tab, "CENTER", 0, 0)
     tab.icon = icon
@@ -368,8 +369,11 @@ local function CE_CreateBuyTabContent(tabIndex)
     content.scrollFrame = scrollFrame
 
     local scrollBar = CreateFrame("Slider", "ConsumesManager_BuyScrollBar", content)
-    scrollBar:SetPoint("TOPRIGHT", content, "TOPRIGHT", -2, -35)
-    scrollBar:SetPoint("BOTTOMRIGHT", content, "BOTTOMRIGHT", -2, 16)
+    -- Anchor to the actual scroll frame so the scrollbar track matches the
+    -- scrollable region (dropdowns above are NOT part of the scroll area).
+    scrollBar:ClearAllPoints()
+    scrollBar:SetPoint("TOPRIGHT", scrollFrame, "TOPRIGHT", 23, 0)
+    scrollBar:SetPoint("BOTTOMRIGHT", scrollFrame, "BOTTOMRIGHT", 23, 0)
     scrollBar:SetWidth(16)
     scrollBar:SetOrientation('VERTICAL')
     scrollBar:SetThumbTexture("Interface\\Buttons\\UI-ScrollBar-Knob")
@@ -431,13 +435,17 @@ function CE_CreateBuyTab()
     end
 
     local tabIndex = 7
-    local xOffset = 270
+    local xOffset = 280
     local tooltipText = "Buy (missing consumables)"
 
     if ConsumesManager_MainFrame.CEBuyTabButton and ConsumesManager_MainFrame.CEBuyTabContent then
         ConsumesManager_MainFrame.CEBuyTabButton:Show()
         ConsumesManager_Tabs[tabIndex] = ConsumesManager_MainFrame.CEBuyTabButton
         ConsumesManager_MainFrame.tabs[tabIndex] = ConsumesManager_MainFrame.CEBuyTabContent
+
+        -- Re-sync dropdowns on re-enable; OnShow may not fire if frames are already shown.
+        CE_BuyTabSyncDropdowns(ConsumesManager_MainFrame.CEBuyTabContent)
+        CE_BuyTabSyncPresetDropdowns()
         return
     end
 
@@ -451,6 +459,10 @@ function CE_CreateBuyTab()
     ConsumesManager_MainFrame.tabs[tabIndex] = content
     ConsumesManager_MainFrame.CEBuyTabButton = tab
     ConsumesManager_MainFrame.CEBuyTabContent = content
+
+    -- Prefill immediately so the Buy tab opens with restored selections.
+    CE_BuyTabSyncDropdowns(content)
+    CE_BuyTabSyncPresetDropdowns()
 end
 
 function CE_RemoveBuyTab()
@@ -481,13 +493,20 @@ function CE_RemoveBuyTab()
         mainFrame.tabs[tabIndex] = nil
     end
 
-    mainFrame.CEBuyTabButton = nil
-    mainFrame.CEBuyTabContent = nil
+    -- Keep references so re-enabling CE can reuse the same frames.
+    -- This avoids recreating globally named UIDropDownMenuTemplate frames,
+    -- which can lead to blank dropdown text after toggle cycles.
 end
 
 function CE_UpdateBuyTabState()
     if ConsumesManager_Options and ConsumesManager_Options.showColdEmbrace then
         CE_CreateBuyTab()
+
+        -- Safety: if the tab was (re)created, sync selections from backend state.
+        if ConsumesManager_MainFrame and ConsumesManager_MainFrame.CEBuyTabContent then
+            CE_BuyTabSyncDropdowns(ConsumesManager_MainFrame.CEBuyTabContent)
+            CE_BuyTabSyncPresetDropdowns()
+        end
     else
         CE_RemoveBuyTab()
     end
@@ -535,7 +554,13 @@ local function CE_UpdateBuyScrollBar(parentFrame, scrollChildHeight)
     end
 
     local totalHeight = (type(scrollChildHeight) == "number" and scrollChildHeight) or scrollChild:GetHeight()
-    local shownHeight = (parentFrame.GetHeight and parentFrame:GetHeight() or 0) - 20
+    -- Use the actual scroll frame's visible height; using the parent content frame
+    -- causes incorrect ranges (can't reach the bottom) because the content includes
+    -- headers/dropdowns above the scroll area.
+    local shownHeight = (scrollFrame.GetHeight and scrollFrame:GetHeight()) or 0
+    if shownHeight <= 0 then
+        shownHeight = (parentFrame.GetHeight and parentFrame:GetHeight() or 0) - 60
+    end
     if shownHeight < 0 then
         shownHeight = 0
     end
@@ -785,6 +810,10 @@ local function CE_AddBuyGroupHeader(scrollChild, index, lineHeight, labelText, p
 end
 
 function CE_UpdateBuyConsumables()
+    if not ConsumesManager_MainFrame or not ConsumesManager_MainFrame.IsShown or not ConsumesManager_MainFrame:IsShown() then
+        return
+    end
+
     local parentFrame = ConsumesManager_MainFrame and ConsumesManager_MainFrame.tabs and ConsumesManager_MainFrame.tabs[7]
     if not parentFrame then
         return

@@ -6,7 +6,7 @@ if type(orig_UpdatePresetsConsumables) == "function" then
         -- Only do heavy UI work when the main window is actually visible.
         -- This prevents background events (e.g. sync updates) from doing full
         -- Presets re-renders while the UI is closed.
-        if ConsumesManager_MainFrame and ConsumesManager_MainFrame.IsShown and not ConsumesManager_MainFrame:IsShown() then
+        if not ConsumesManager_MainFrame or not ConsumesManager_MainFrame.IsShown or not ConsumesManager_MainFrame:IsShown() then
             return
         end
         if ConsumesManager_Options.showColdEmbrace then
@@ -66,6 +66,9 @@ local orig_ShowMainWindow = ConsumesManager_ShowMainWindow
 if type(orig_ShowMainWindow) == "function" then
     function ConsumesManager_ShowMainWindow()
         orig_ShowMainWindow()
+        if type(CE_ApplyWideWindow) == "function" then
+            CE_ApplyWideWindow(ConsumesManager_Options and ConsumesManager_Options.showColdEmbrace and true or false)
+        end
         if type(CE_CreateCETab) == "function" then
             CE_CreateCETab()
         end
@@ -88,6 +91,9 @@ end
 local orig_CreateMainWindow = ConsumesManager_CreateMainWindow
 if type(orig_CreateMainWindow) == "function" then
     function ConsumesManager_CreateMainWindow()
+        if type(CE_ApplyWideWindow) == "function" then
+            CE_ApplyWideWindow(ConsumesManager_Options and ConsumesManager_Options.showColdEmbrace and true or false)
+        end
         orig_CreateMainWindow()
         if type(CE_CreateCETab) == "function" then
             CE_CreateCETab()
