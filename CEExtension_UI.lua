@@ -99,8 +99,8 @@ function CE_ApplyWideWindow(enabled)
         if type(ConsumesManager_UpdateManagerContent) == "function" then
             ConsumesManager_UpdateManagerContent()
         end
-        if type(ConsumesManager_UpdatePresetsConsumables) == "function" then
-            ConsumesManager_UpdatePresetsConsumables()
+        if type(ConsumesManager_UpdatePresetsContent) == "function" then
+            ConsumesManager_UpdatePresetsContent()
         end
         if type(ConsumesManager_UpdateSettingsContent) == "function" then
             ConsumesManager_UpdateSettingsContent()
@@ -236,7 +236,9 @@ function CE_SetClassDropdownToCurrent()
         end
     end
 
-    ConsumesManager_UpdatePresetsConsumables()
+    if type(ConsumesManager_UpdatePresetsContent) == "function" then
+        ConsumesManager_UpdatePresetsContent()
+    end
 end
 
 function CE_SetRaidDropdownToNaxxramas()
@@ -276,7 +278,7 @@ function CE_UpdateRaidsDropdown()
             info.func = function()
                 UIDropDownMenu_SetSelectedID(raidDropdown, raidIndex)
                 ConsumesManager_SelectedRaid = raidName
-                ConsumesManager_UpdatePresetsConsumables()
+                ConsumesManager_UpdatePresetsContent()
             end
             UIDropDownMenu_AddButton(info)
             if raidName == desired then
@@ -322,7 +324,7 @@ function CE_InitClassDropdown(classDropdown)
             if not useCE and type(ConsumesManager_UpdateRaidsDropdown) == "function" then
                 ConsumesManager_UpdateRaidsDropdown()
             end
-            ConsumesManager_UpdatePresetsConsumables()
+            ConsumesManager_UpdatePresetsContent()
         end
         UIDropDownMenu_AddButton(info)
         idx = idx + 1
@@ -403,8 +405,8 @@ local function CE_CreateCETabCheckbox(parentFrame)
                 CE_UpdateBuyTabState()
             end
         end
-        if type(ConsumesManager_UpdatePresetsConsumables) == "function" then
-            ConsumesManager_UpdatePresetsConsumables()
+        if type(ConsumesManager_UpdatePresetsContent) == "function" then
+            ConsumesManager_UpdatePresetsContent()
         end
         CE_UpdateCETabEnabledState()
     end)
@@ -444,8 +446,8 @@ local function CE_CreateCETabCheckbox(parentFrame)
         if parentFrame.CERadioTwo then
             parentFrame.CERadioTwo:SetChecked(mode == "ownedmode")
         end
-        if type(ConsumesManager_UpdatePresetsConsumables) == "function" then
-            ConsumesManager_UpdatePresetsConsumables()
+        if type(ConsumesManager_UpdatePresetsContent) == "function" then
+            ConsumesManager_UpdatePresetsContent()
         end
     end
 

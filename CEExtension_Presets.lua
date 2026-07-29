@@ -96,8 +96,8 @@ local function CE_AddGroupHeader(scrollChild, index, lineHeight, labelText, pare
         end
         ConsumesManager_Options.ceGroupCollapsed = ConsumesManager_Options.ceGroupCollapsed or {}
         ConsumesManager_Options.ceGroupCollapsed[groupKey] = not isCollapsed
-        if type(ConsumesManager_UpdatePresetsConsumables) == "function" then
-            ConsumesManager_UpdatePresetsConsumables()
+        if type(ConsumesManager_UpdatePresetsContent) == "function" then
+            ConsumesManager_UpdatePresetsContent()
         end
     end)
 

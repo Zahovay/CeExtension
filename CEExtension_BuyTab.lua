@@ -299,11 +299,11 @@ local function CE_CreateBuyTabContent(tabIndex)
                     UIDropDownMenu_SetSelectedID(classDropdown, cIndex)
                 end
                 ConsumesManager_SelectedClass = cName
-                if type(ConsumesManager_UpdatePresetsConsumables) == "function" then
+                if type(ConsumesManager_UpdatePresetsContent) == "function" then
                     if type(ConsumesManager_UpdateRaidsDropdown) == "function" then
                         ConsumesManager_UpdateRaidsDropdown()
                     end
-                    ConsumesManager_UpdatePresetsConsumables()
+                    ConsumesManager_UpdatePresetsContent()
                 end
                 CE_BuyTabSyncPresetDropdowns()
                 CE_BuyTabClearBoughtMarks()
@@ -332,8 +332,8 @@ local function CE_CreateBuyTabContent(tabIndex)
                     UIDropDownMenu_SetSelectedID(raidDropdown, raidIndex)
                 end
                 ConsumesManager_SelectedRaid = raidName
-                if type(ConsumesManager_UpdatePresetsConsumables) == "function" then
-                    ConsumesManager_UpdatePresetsConsumables()
+                if type(ConsumesManager_UpdatePresetsContent) == "function" then
+                    ConsumesManager_UpdatePresetsContent()
                 end
                 CE_BuyTabSyncPresetDropdowns()
                 CE_BuyTabClearBoughtMarks()

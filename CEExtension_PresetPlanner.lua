@@ -448,8 +448,8 @@ local function CE_BuildPlannerRows(scrollChild, parentFrame, items)
                 -- Preserve amount here; amount is saved separately on focus-loss.
                 CE_SetPresetReqFor(selectedClass, raidName, itemId, nil, status)
             end
-            if type(ConsumesManager_UpdatePresetsConsumables) == "function" then
-                ConsumesManager_UpdatePresetsConsumables()
+            if type(ConsumesManager_UpdatePresetsContent) == "function" then
+                ConsumesManager_UpdatePresetsContent()
             end
         end
 
@@ -469,8 +469,8 @@ local function CE_BuildPlannerRows(scrollChild, parentFrame, items)
             local amountText = row.amountInput and row.amountInput.GetText and row.amountInput:GetText() or "0"
             local amount = tonumber(amountText) or 0
             CE_SetPresetReqFor(selectedClass, raidName, itemId, amount, nil)
-            if type(ConsumesManager_UpdatePresetsConsumables) == "function" then
-                ConsumesManager_UpdatePresetsConsumables()
+            if type(ConsumesManager_UpdatePresetsContent) == "function" then
+                ConsumesManager_UpdatePresetsContent()
             end
         end
 
@@ -804,8 +804,8 @@ local function CE_CreatePlannerList(parentFrame)
                 if not useCE and type(ConsumesManager_UpdateRaidsDropdown) == "function" then
                     ConsumesManager_UpdateRaidsDropdown()
                 end
-                if type(ConsumesManager_UpdatePresetsConsumables) == "function" then
-                    ConsumesManager_UpdatePresetsConsumables()
+                if type(ConsumesManager_UpdatePresetsContent) == "function" then
+                    ConsumesManager_UpdatePresetsContent()
                 end
 
                 local owner = parentFrame.GetParent and parentFrame:GetParent() or nil

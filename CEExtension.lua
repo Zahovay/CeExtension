@@ -1,8 +1,8 @@
 -- CE hooks
 
-local orig_UpdatePresetsConsumables = ConsumesManager_UpdatePresetsConsumables
+local orig_UpdatePresetsConsumables = ConsumesManager_UpdatePresetsContent
 if type(orig_UpdatePresetsConsumables) == "function" then
-    function ConsumesManager_UpdatePresetsConsumables()
+    function ConsumesManager_UpdatePresetsContent()
         -- Only do heavy UI work when the main window is actually visible.
         -- This prevents background events (e.g. sync updates) from doing full
         -- Presets re-renders while the UI is closed.
